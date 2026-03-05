@@ -2,12 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { UserIcon } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { AnimatedThemeToggler } from "@/components/animated-theme-toggler";
 import { navigationItems } from "@/constant/menu";
+import { authClient } from "@/lib/auth-client";
 
 interface ScrollNavigationProps {
     children: React.ReactNode;
@@ -15,6 +15,8 @@ interface ScrollNavigationProps {
 
 export default function ScrollNavigation({ children }: ScrollNavigationProps) {
     const pathname = usePathname();
+    const router = useRouter();
+    const { data: session } = authClient.useSession();
     const [isAtTop, setIsAtTop] = React.useState(true);
     const sectionHeaders: Record<number, string> = {
         0: "Utama",
@@ -34,6 +36,14 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
+
+    const displayName = session?.user.name?.trim() || "Pengguna";
+    const avatarInitial = displayName.charAt(0).toUpperCase() || "P";
+
+    const handleLogout = async () => {
+        await authClient.signOut();
+        router.push("/login");
+    };
 
     return (
         <div className="drawer lg:drawer-open">
@@ -85,13 +95,8 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
                                 role="button"
                                 className="btn btn-sm btn-ghost btn-circle avatar"
                             >
-                                <div className="w-7 rounded-full">
-                                    <Image
-                                        alt="User avatar"
-                                        src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-                                        width={28}
-                                        height={28}
-                                    />
+                                <div className="w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-semibold">
+                                    {avatarInitial}
                                 </div>
                             </div>
                             <ul
@@ -101,25 +106,29 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
                                 <li className="font-semibold">
                                     <div>
                                         <UserIcon className="inline-block size-4 mr-2" />
-                                        Umar Hadi Pranoto
+                                        {displayName}
                                     </div>
                                 </li>
                                 <li>
-                                    <a className="justify-between">
+                                    <Link
+                                        href="/profile"
+                                        className="justify-between"
+                                    >
                                         Profile
                                         <span className="badge badge-sm">
                                             New
                                         </span>
-                                    </a>
+                                    </Link>
                                 </li>
+                                <div className="divider my-0" />
                                 <li>
-                                    <a>Settings</a>
-                                </li>
-                                <li>
-                                    <hr className="my-0" />
-                                </li>
-                                <li>
-                                    <a>Logout</a>
+                                    <button
+                                        type="button"
+                                        className="btn btn-xs btn-secondary"
+                                        onClick={handleLogout}
+                                    >
+                                        Logout
+                                    </button>
                                 </li>
                             </ul>
                         </div>

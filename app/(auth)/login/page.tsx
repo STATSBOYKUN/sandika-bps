@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
     ArrowRight,
     Chrome,
@@ -11,24 +11,61 @@ import {
     AlertCircle,
 } from "lucide-react";
 
+import { authClient } from "@/lib/auth-client";
+
 export default function LoginPage() {
+    const router = useRouter();
+    const { data: session, isPending } = authClient.useSession();
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    useEffect(() => {
+        if (!isPending && session) {
+            router.replace("/");
+        }
+    }, [isPending, router, session]);
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!identifier.trim() || !password.trim()) {
-            setError("Username/email and password are required.");
+            setError("Username dan password wajib diisi.");
             return;
         }
-        // Mock validation
-        if (identifier === "admin" && password === "admin") {
+
+        setIsSubmitting(true);
+        const { error: signInError } = await authClient.signIn.username({
+            username: identifier.trim(),
+            password,
+            callbackURL: "/profile",
+        });
+
+        if (signInError) {
+            setError(signInError.message || "Kredensial yang Anda masukkan salah.");
+            setIsSubmitting(false);
+            return;
+        }
+
+        setIsSubmitting(false);
+        if (!signInError) {
             setError(null);
-            // Redirect or handle login
-            console.log("Login success");
-        } else {
-            setError("Kredensial yang Anda masukkan salah.");
+            router.push("/profile");
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setError(null);
+        setIsGoogleSubmitting(true);
+        const { error: socialError } = await authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/profile",
+        });
+
+        if (socialError) {
+            setError(socialError.message || "Gagal login dengan Google.");
+            setIsGoogleSubmitting(false);
         }
     };
 
@@ -62,9 +99,9 @@ export default function LoginPage() {
                         <form onSubmit={handleLogin} className="space-y-6">
                             <div className="flex flex-col gap-4">
                                 <label className="form-control w-full space-y-1.5">
-                                    <span className="label-text font-medium text-sm px-0.5">
-                                        Username atau email
-                                    </span>
+                                        <span className="label-text font-medium text-sm px-0.5">
+                                            Username
+                                        </span>
                                     <label
                                         className={`input input-bordered h-11 flex items-center gap-3 bg-base-100 px-3 transition-all focus-within:ring-2 focus-within:ring-primary/20 ${error && !identifier ? "input-error" : ""}`}
                                     >
@@ -72,7 +109,7 @@ export default function LoginPage() {
                                         <input
                                             type="text"
                                             className="grow text-sm"
-                                            placeholder="Username/Email"
+                                            placeholder="Username"
                                             value={identifier}
                                             onChange={(e) => {
                                                 setIdentifier(e.target.value);
@@ -83,7 +120,7 @@ export default function LoginPage() {
                                     {error && !identifier && (
                                         <p className="flex items-center gap-1.5 px-0.5 mt-1 text-[11px] font-medium text-error animate-in fade-in slide-in-from-top-1">
                                             <AlertCircle className="size-3" />
-                                            Username atau email wajib diisi
+                                            Username wajib diisi
                                         </p>
                                     )}
                                 </label>
@@ -133,9 +170,10 @@ export default function LoginPage() {
                             <div className="space-y-3">
                                 <button
                                     type="submit"
+                                    disabled={isSubmitting || isGoogleSubmitting}
                                     className="btn btn-neutral btn-sm h-11 w-full rounded-xl gap-2 shadow-sm font-semibold"
                                 >
-                                    Masuk
+                                    {isSubmitting ? "Memproses..." : "Masuk"}
                                     <ArrowRight className="h-4 w-4" />
                                 </button>
 
@@ -143,15 +181,15 @@ export default function LoginPage() {
                                     Akses Cepat
                                 </div>
 
-                                <Link href="/" className="block">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline btn-sm h-11 w-full rounded-xl gap-2 border-base-300 hover:bg-base-300 transition-all font-semibold text-sm"
-                                    >
-                                        <Chrome className="h-4 w-4" />
-                                        Google Account
-                                    </button>
-                                </Link>
+                                <button
+                                    type="button"
+                                    disabled={isSubmitting || isGoogleSubmitting}
+                                    onClick={handleGoogleLogin}
+                                    className="btn btn-outline btn-sm h-11 w-full rounded-xl gap-2 border-base-300 hover:bg-base-300 transition-all font-semibold text-sm"
+                                >
+                                    <Chrome className="h-4 w-4" />
+                                    {isGoogleSubmitting ? "Mengarahkan..." : "Google Account"}
+                                </button>
                             </div>
 
                             <p className="text-center text-[10px] font-medium tracking-wide text-base-content/30 mt-2">
