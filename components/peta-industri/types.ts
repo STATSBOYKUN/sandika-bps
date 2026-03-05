@@ -1,6 +1,6 @@
 import type { FeatureCollection, Geometry, Point } from "geojson";
 
-import type { IndustryRow, PlatformFilterOption } from "@/components/data-industri/types";
+import type { IndustryPlatform, IndustryRow } from "@/components/data-industri/types";
 
 export type WilayahMode = "kecamatan" | "desa";
 
@@ -17,7 +17,7 @@ export type BasemapOption = "osm" | "light" | "dark";
 
 export type MapFilters = {
   search: string;
-  platforms: PlatformFilterOption[];
+  platforms: IndustryPlatform[];
   statuses: IndustryRow["status"][];
   kecamatan: string;
   desa: string;

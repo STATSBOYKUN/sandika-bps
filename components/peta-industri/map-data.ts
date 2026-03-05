@@ -13,13 +13,15 @@ export function buildLargeIndustryPayload(total = 25_000) {
 }
 
 export function rowsToPointGeoJson(rows: IndustryRow[]): IndustryPointGeoJson {
+  const googleMapsRows = rows.filter((row) => row.platform === "Google Maps");
+
   return {
     type: "FeatureCollection",
-    features: rows.map((row) => ({
+    features: googleMapsRows.map((row) => ({
       type: "Feature",
       geometry: {
         type: "Point",
-        coordinates: [row.longitude, row.latitude],
+        coordinates: [row.metadata.longitude, row.metadata.latitude],
       },
       properties: {
         id: row.id,

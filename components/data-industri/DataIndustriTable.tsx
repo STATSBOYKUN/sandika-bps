@@ -96,15 +96,18 @@ export default function DataIndustriTable({
                 ref={tableRef}
                 className="overflow-auto"
                 style={{
-                    height: "560px",
-                    maxHeight: "560px",
+                    height: "min(58dvh, 560px)",
+                    maxHeight: "min(58dvh, 560px)",
                     contain: "strict",
                     willChange: "scroll-position",
                 }}
             >
                 <table
                     className="table table-sm border-separate border-spacing-0"
-                    style={{ width: `${table.getTotalSize()}px`, tableLayout: "fixed" }}
+                    style={{
+                        width: `${table.getTotalSize()}px`,
+                        tableLayout: "fixed",
+                    }}
                 >
                     <thead className="sticky top-0 z-10 bg-base-200">
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -113,26 +116,45 @@ export default function DataIndustriTable({
                                     <th
                                         key={header.id}
                                         colSpan={header.colSpan}
-                                        className={header.column.getCanSort() ? "relative select-none" : ""}
-                                        style={{ position: "relative", width: header.getSize() }}
+                                        className={
+                                            header.column.getCanSort()
+                                                ? "relative select-none"
+                                                : ""
+                                        }
+                                        style={{
+                                            position: "relative",
+                                            width: header.getSize(),
+                                        }}
                                     >
                                         <div
-                                            className={header.column.getCanSort() ? "flex items-center gap-1 cursor-pointer" : "flex items-center gap-1"}
-                                            onClick={header.column.getCanSort() ? () => {
-                                                if (resizedRef.current) {
-                                                    resizedRef.current = false;
-                                                    return;
-                                                }
-                                                header.column.toggleSorting();
-                                            } : undefined}
+                                            className={
+                                                header.column.getCanSort()
+                                                    ? "flex items-center gap-1 cursor-pointer"
+                                                    : "flex items-center gap-1"
+                                            }
+                                            onClick={
+                                                header.column.getCanSort()
+                                                    ? () => {
+                                                          if (
+                                                              resizedRef.current
+                                                          ) {
+                                                              resizedRef.current = false;
+                                                              return;
+                                                          }
+                                                          header.column.toggleSorting();
+                                                      }
+                                                    : undefined
+                                            }
                                         >
                                             {flexRender(
                                                 header.column.columnDef.header,
                                                 header.getContext(),
                                             )}
-                                            {header.column.getIsSorted() === "asc" ? (
+                                            {header.column.getIsSorted() ===
+                                            "asc" ? (
                                                 <ChevronUp className="h-4 w-4" />
-                                            ) : header.column.getIsSorted() === "desc" ? (
+                                            ) : header.column.getIsSorted() ===
+                                              "desc" ? (
                                                 <ChevronDown className="h-4 w-4" />
                                             ) : (
                                                 <ArrowUpDown className="h-4 w-4 opacity-40" />
@@ -144,18 +166,28 @@ export default function DataIndustriTable({
                                                 role="separator"
                                                 aria-label={`Resize ${String(header.column.columnDef.header)}`}
                                                 draggable={false}
-                                                onClick={(event) => event.stopPropagation()}
-                                                onMouseUp={(event) => event.stopPropagation()}
-                                                onDoubleClick={(event) => event.stopPropagation()}
+                                                onClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                                onMouseUp={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                                onDoubleClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
                                                 onMouseDown={(event) => {
                                                     event.stopPropagation();
                                                     resizedRef.current = true;
-                                                    header.getResizeHandler()(event);
+                                                    header.getResizeHandler()(
+                                                        event,
+                                                    );
                                                 }}
                                                 onTouchStart={(event) => {
                                                     event.stopPropagation();
                                                     resizedRef.current = true;
-                                                    header.getResizeHandler()(event);
+                                                    header.getResizeHandler()(
+                                                        event,
+                                                    );
                                                 }}
                                                 className={`absolute -right-1 top-0 h-full w-3 cursor-col-resize touch-none select-none ${header.column.getIsResizing() ? "bg-primary/40" : "hover:bg-base-content/20"}`}
                                             />
@@ -193,7 +225,13 @@ export default function DataIndustriTable({
                                     onClick={() => onRowClick(row.original)}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <td key={cell.id} style={{ width: `${cell.column.getSize()}px` }} className="cursor-pointer">
+                                        <td
+                                            key={cell.id}
+                                            style={{
+                                                width: `${cell.column.getSize()}px`,
+                                            }}
+                                            className="cursor-pointer"
+                                        >
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext(),
@@ -222,7 +260,7 @@ export default function DataIndustriTable({
                 )}
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-base-300 bg-base-200/40 px-4 py-3">
+            <div className="flex flex-col gap-3 border-t border-base-300 bg-base-200/40 px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between">
                 <div className="text-sm text-base-content/70">
                     Menampilkan{" "}
                     {filteredCount === 0
@@ -234,16 +272,12 @@ export default function DataIndustriTable({
                         filteredCount,
                     )}{" "}
                     dari {filteredCount}
-                    <span className="ml-2 badge badge-warning badge-sm">
-                        baris luar Karanganyar ditandai kuning
-                    </span>
                 </div>
 
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-2">
-                        <label className="text-sm text-base-content/70">Rows per page</label>
+                <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
                         <select
-                            className="select select-bordered select-sm"
+                            className="select select-bordered select-sm w-full sm:w-auto"
                             value={pagination.pageSize}
                             onChange={(event) => {
                                 table.setPageSize(Number(event.target.value));
@@ -256,66 +290,72 @@ export default function DataIndustriTable({
                                 </option>
                             ))}
                         </select>
-                    </div>
 
-                    <div className="join self-end md:self-auto">
-                        <button
-                            type="button"
-                            className="btn btn-sm join-item"
-                            onClick={() => table.setPageIndex(0)}
-                            disabled={!table.getCanPreviousPage()}
-                            aria-label="Halaman pertama"
-                        >
-                            {'<<'}
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-sm join-item"
-                            onClick={() => table.previousPage()}
-                            disabled={!table.getCanPreviousPage()}
-                            aria-label="Halaman sebelumnya"
-                        >
-                            {'<'}
-                        </button>
-                        {pageButtons.map((page, index) =>
-                            page === "..." ? (
-                                <button
-                                    key={`ellipsis-${index}`}
-                                    type="button"
-                                    className="btn btn-sm btn-disabled join-item"
-                                    disabled
-                                >
-                                    ...
-                                </button>
-                            ) : (
-                                <button
-                                    key={page}
-                                    type="button"
-                                    className={`btn btn-sm join-item ${page - 1 === currentPage ? "btn-primary" : "btn-outline"}`}
-                                    onClick={() => table.setPageIndex(page - 1)}
-                                >
-                                    {page}
-                                </button>
-                            ),
-                        )}
-                        <button
-                            type="button"
-                            className="btn btn-sm join-item"
-                            onClick={() => table.nextPage()}
-                            disabled={!table.getCanNextPage()}
-                            aria-label="Halaman berikutnya"
-                        >
-                            {'>'}
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-sm join-item"
-                            onClick={() => table.setPageIndex(Math.max(pageCount - 1, 0))}
-                            disabled={!table.getCanNextPage()}
-                            aria-label="Halaman terakhir"
-                        >
-                            {'>>'}
-                        </button>
+                        <div className="join w-full overflow-x-auto sm:w-auto self-end md:self-auto">
+                            <button
+                                type="button"
+                                className="btn btn-sm join-item"
+                                onClick={() => table.setPageIndex(0)}
+                                disabled={!table.getCanPreviousPage()}
+                                aria-label="Halaman pertama"
+                            >
+                                {"<<"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-sm join-item"
+                                onClick={() => table.previousPage()}
+                                disabled={!table.getCanPreviousPage()}
+                                aria-label="Halaman sebelumnya"
+                            >
+                                {"<"}
+                            </button>
+                            {pageButtons.map((page, index) =>
+                                page === "..." ? (
+                                    <button
+                                        key={`ellipsis-${index}`}
+                                        type="button"
+                                        className="btn btn-sm btn-disabled join-item"
+                                        disabled
+                                    >
+                                        ...
+                                    </button>
+                                ) : (
+                                    <button
+                                        key={page}
+                                        type="button"
+                                        className={`btn btn-sm join-item ${page - 1 === currentPage ? "btn-primary" : "btn-outline"}`}
+                                        onClick={() =>
+                                            table.setPageIndex(page - 1)
+                                        }
+                                    >
+                                        {page}
+                                    </button>
+                                ),
+                            )}
+                            <button
+                                type="button"
+                                className="btn btn-sm join-item"
+                                onClick={() => table.nextPage()}
+                                disabled={!table.getCanNextPage()}
+                                aria-label="Halaman berikutnya"
+                            >
+                                {">"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-sm join-item"
+                                onClick={() =>
+                                    table.setPageIndex(
+                                        Math.max(pageCount - 1, 0),
+                                    )
+                                }
+                                disabled={!table.getCanNextPage()}
+                                aria-label="Halaman terakhir"
+                            >
+                                {">>"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

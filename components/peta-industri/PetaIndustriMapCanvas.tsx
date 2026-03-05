@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapboxOverlay } from "@deck.gl/mapbox";
-import { ScatterplotLayer } from "@deck.gl/layers";
-import type { Layer as DeckLayer } from "@deck.gl/core";
+import { MapPin } from "lucide-react";
 import maplibregl, { type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import Map, {
   FullscreenControl,
   Layer,
+  Marker,
   NavigationControl,
   ScaleControl,
   Source,
@@ -13,10 +12,9 @@ import Map, {
   type MapLayerMouseEvent,
   type MapMouseEvent,
   type MapRef,
-  useControl,
 } from "react-map-gl/maplibre";
 
-import type { IndustryRow } from "@/components/data-industri/types";
+import type { GoogleMapsIndustryRow, IndustryRow } from "@/components/data-industri/types";
 import type {
   BoundaryGeoJson,
   IndustryPointGeoJson,
@@ -31,12 +29,6 @@ const INITIAL_VIEW = {
   bearing: 0,
   pitch: 0,
 };
-
-function DeckOverlay({ layers }: { layers: DeckLayer[] }) {
-  const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ interleaved: true }));
-  overlay.setProps({ layers });
-  return null;
-}
 
 interface PetaIndustriMapCanvasProps {
   boundaryMode: WilayahMode;
@@ -68,7 +60,7 @@ export default function PetaIndustriMapCanvas({
 
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.easeTo({ ...INITIAL_VIEW, duration: 700 });
+    mapRef.current.getMap().jumpTo(INITIAL_VIEW);
   }, [focusToken]);
 
   const boundaryFillLayer: LayerProps = {
@@ -135,28 +127,15 @@ export default function PetaIndustriMapCanvas({
     filter: ["!", ["has", "point_count"]],
     paint: {
       "circle-color": "#1d4ed8",
-      "circle-radius": 5,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 4, 10, 5.5, 13, 7, 16, 8.5],
       "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 1,
+      "circle-stroke-width": 1.5,
     },
   };
 
-  const highlightLayers = useMemo<DeckLayer[]>(() => {
-    if (!selectedPoint) return [];
-    return [
-      new ScatterplotLayer<IndustryRow>({
-        id: "selected-point-highlight",
-        data: [selectedPoint],
-        pickable: false,
-        stroked: true,
-        filled: false,
-        lineWidthMinPixels: 2,
-        radiusMinPixels: 12,
-        getPosition: (d) => [d.longitude, d.latitude],
-        getLineColor: [250, 204, 21, 255],
-        getRadius: 180,
-      }),
-    ];
+  const selectedMapsPoint = useMemo<GoogleMapsIndustryRow | null>(() => {
+    if (!selectedPoint || selectedPoint.platform !== "Google Maps") return null;
+    return selectedPoint as GoogleMapsIndustryRow;
   }, [selectedPoint]);
 
   const onHover = (event: MapLayerMouseEvent) => {
@@ -241,7 +220,17 @@ export default function PetaIndustriMapCanvas({
         {layers.points ? <Layer {...unclusteredLayer} /> : null}
       </Source>
 
-      <DeckOverlay layers={highlightLayers} />
+      {selectedMapsPoint ? (
+        <Marker
+          longitude={selectedMapsPoint.metadata.longitude}
+          latitude={selectedMapsPoint.metadata.latitude}
+          anchor="bottom"
+        >
+          <div className="tooltip tooltip-top" data-tip="Lokasi terpilih">
+            <MapPin className="h-8 w-8 text-error drop-shadow-md" />
+          </div>
+        </Marker>
+      ) : null}
 
       <NavigationControl position="top-right" showCompass={true} />
       <ScaleControl position="bottom-right" />

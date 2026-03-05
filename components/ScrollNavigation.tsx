@@ -72,7 +72,7 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
                             className="btn btn-ghost text-lg font-bold tooltip tooltip-right"
                             data-tip="Dashboard industri digital"
                         >
-                            Digital Industry Tools
+                            SANDIKA
                         </Link>
                     </div>
 
@@ -142,7 +142,7 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
                             Navigasi
                         </p>
                         <p className="text-sm font-semibold text-base-content/80">
-                            Digital Industry Tools
+                            SANDIKA
                         </p>
                     </div>
 

@@ -22,7 +22,7 @@ export default function PetaIndustriPage() {
         <PageShell width="4xl" className="space-y-6">
             <PageHeader
                 title="Peta Industri"
-                description="Visualisasi persebaran industri digital di Karanganyar dengan peta interaktif, filter, dan detail entitas saat mappin diklik."
+                description="Deskripsi Peta Industri"
                 badge="Spasial"
             />
             <PetaIndustriMap />
