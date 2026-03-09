@@ -22,7 +22,27 @@ export type IndustryBaseRow = {
   isInsideKaranganyar: boolean;
 };
 
+export type WilayahMetadata = {
+  provinsi: {
+    id: string;
+    nama: string;
+  };
+  kabupaten: {
+    id: string;
+    nama: string;
+  };
+  kecamatan: {
+    id: string;
+    nama: string;
+  };
+  desa: {
+    id: string;
+    nama: string;
+  };
+};
+
 export type GoogleMapsMetadata = {
+  wilayah: WilayahMetadata;
   latitude: number;
   longitude: number;
   placeId: string;

@@ -1,7 +1,7 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { MapPin, Music2, PlayCircle } from "lucide-react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { MapPin, Music2, PlayCircle, RefreshCw } from "lucide-react";
 import {
     getCoreRowModel,
     getFilteredRowModel,
@@ -16,7 +16,6 @@ import DataIndustriFilterModal from "@/components/data-industri/DataIndustriFilt
 import DataIndustriDetailModal from "@/components/data-industri/DataIndustriDetailModal";
 import DataIndustriTable from "@/components/data-industri/DataIndustriTable";
 import DataIndustriToolbar from "@/components/data-industri/DataIndustriToolbar";
-import { buildDummyRows } from "@/components/data-industri/mock-data";
 import {
     DATA_INDUSTRI_TABS,
     getTabConfigByKey,
@@ -28,6 +27,7 @@ import {
 } from "@/components/data-industri/types";
 import PageHeader from "@/components/layout/PageHeader";
 import PageShell from "@/components/layout/PageShell";
+import PageState from "@/components/layout/PageState";
 
 const ALL_KECAMATAN = "Semua";
 const ALL_DESA = "Semua";
@@ -84,9 +84,9 @@ export default function DataIndustriPage() {
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [previewRow, setPreviewRow] = useState<IndustryRow | null>(null);
 
-    const [rowsState, setRowsState] = useState<IndustryRow[]>(() =>
-        buildDummyRows(10_000),
-    );
+    const [rowsState, setRowsState] = useState<IndustryRow[]>([]);
+    const [isLoadingRows, setIsLoadingRows] = useState(true);
+    const [hasRowsError, setHasRowsError] = useState(false);
     const activeTabConfig = useMemo(
         () => getTabConfigByKey(activeTab),
         [activeTab],
@@ -133,6 +133,34 @@ export default function DataIndustriPage() {
         setGlobalFilter(deferredSearch.trim());
     }, [deferredSearch]);
 
+    const loadRows = useCallback(async () => {
+        setIsLoadingRows(true);
+        setHasRowsError(false);
+        try {
+            const response = await fetch("/api/industry", {
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                setHasRowsError(true);
+                setRowsState([]);
+                return;
+            }
+            const payload = (await response.json()) as {
+                data?: IndustryRow[];
+            };
+            setRowsState(Array.isArray(payload.data) ? payload.data : []);
+        } catch {
+            setHasRowsError(true);
+            setRowsState([]);
+        } finally {
+            setIsLoadingRows(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadRows();
+    }, [loadRows]);
+
     useEffect(() => {
         if (!kecamatanOptions.includes(selectedKecamatan)) {
             setSelectedKecamatan(ALL_KECAMATAN);
@@ -159,7 +187,6 @@ export default function DataIndustriPage() {
         }
     }, [tempDesa, tempDesaOptions]);
 
-    // eslint-disable-next-line react-hooks/incompatible-library
     const table = useReactTable({
         data,
         columns,
@@ -187,6 +214,7 @@ export default function DataIndustriPage() {
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         enableColumnResizing: true,
+        autoResetPageIndex: false,
     });
 
     useEffect(() => {
@@ -234,6 +262,16 @@ export default function DataIndustriPage() {
         setPreviewRow(updated);
     };
 
+    const resetAllFilters = () => {
+        setSearchInput("");
+        setSelectedKbli([...KBLI_OPTIONS]);
+        setSelectedKecamatan(ALL_KECAMATAN);
+        setSelectedDesa(ALL_DESA);
+        setTempKbli([...KBLI_OPTIONS]);
+        setTempKecamatan(ALL_KECAMATAN);
+        setTempDesa(ALL_DESA);
+    };
+
     return (
         <PageShell width="4xl" className="space-y-6">
             <PageHeader
@@ -278,12 +316,62 @@ export default function DataIndustriPage() {
                 onOpenFilter={openFilterModal}
             />
 
-            <DataIndustriTable
-                table={table}
-                filteredCount={filteredCount}
-                pagination={pagination}
-                onRowClick={setPreviewRow}
-            />
+            {isLoadingRows ? (
+                <section className="rounded-xl border border-base-300 bg-base-100 p-4">
+                    <div className="space-y-3">
+                        {Array.from({ length: 8 }).map((_, index) => (
+                            <div key={`industry-loading-row-${index}`} className="grid grid-cols-3 gap-3 md:grid-cols-6">
+                                {Array.from({ length: 6 }).map((__, cellIndex) => (
+                                    <div key={`industry-loading-cell-${index}-${cellIndex}`} className="skeleton h-5 w-full" />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            ) : hasRowsError ? (
+                <PageState
+                    variant="error"
+                    title="Data industri belum bisa ditampilkan"
+                    description="Terjadi kendala saat mengambil data. Silakan coba lagi."
+                    className="min-h-[320px] grid place-content-center"
+                    action={
+                        <button type="button" className="btn btn-primary btn-sm gap-2" onClick={() => void loadRows()}>
+                            <RefreshCw className="h-4 w-4" />
+                            Coba Lagi
+                        </button>
+                    }
+                />
+            ) : filteredCount === 0 ? (
+                <PageState
+                    variant="empty"
+                    title={rowsState.length === 0 ? "Belum ada data industri" : "Tidak ada data sesuai filter"}
+                    description={
+                        rowsState.length === 0
+                            ? "Tabel disembunyikan sampai data tersedia dari sumber utama."
+                            : "Coba ubah filter atau reset pencarian untuk melihat data yang tersedia."
+                    }
+                    className="min-h-[320px] grid place-content-center"
+                    action={
+                        rowsState.length === 0 ? (
+                            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={() => void loadRows()}>
+                                <RefreshCw className="h-4 w-4" />
+                                Muat Ulang
+                            </button>
+                        ) : (
+                            <button type="button" className="btn btn-primary btn-sm" onClick={resetAllFilters}>
+                                Reset Filter
+                            </button>
+                        )
+                    }
+                />
+            ) : (
+                <DataIndustriTable
+                    table={table}
+                    filteredCount={filteredCount}
+                    pagination={pagination}
+                    onRowClick={setPreviewRow}
+                />
+            )}
 
             <DataIndustriFilterModal
                 isOpen={isFilterModalOpen}

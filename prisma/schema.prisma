@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -71,4 +72,27 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model IndustryRecord {
+  id                String   @id @default(cuid())
+  sourceKey         String   @unique
+  platform          String
+  namaUsaha         String
+  kbliKategori      String
+  provinsiId        String
+  kabupatenId       String
+  kecamatanId       String
+  kecamatanNama     String
+  desaId            String
+  desaNama          String
+  status            String
+  isInsideKaranganyar Boolean
+  metadata          Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([platform])
+  @@index([kecamatanNama])
+  @@map("industry_record")
 }

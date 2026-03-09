@@ -5,6 +5,8 @@ import { PrismaClient } from "@prisma/client";
 import { betterAuth } from "better-auth";
 import { username } from "better-auth/plugins/username";
 
+import { readIndustrySeedData } from "../lib/industry";
+
 type CsvUser = {
   username: string;
   email: string;
@@ -94,7 +96,63 @@ async function main() {
     created += 1;
   }
 
-  console.log(`Seed complete. Created: ${created}, Skipped: ${skipped}`);
+  const industrySeed = await readIndustrySeedData();
+  const industryClient = (prisma as unknown as {
+    industryRecord: {
+      upsert: (args: {
+        where: { sourceKey: string };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => Promise<unknown>;
+    };
+  }).industryRecord;
+
+  let upsertedIndustry = 0;
+  for (const row of industrySeed.all) {
+    await industryClient.upsert({
+      where: { sourceKey: row.sourceKey },
+      create: {
+        sourceKey: row.sourceKey,
+        platform: row.platform,
+        namaUsaha: row.namaUsaha,
+        kbliKategori: row.kbliKategori,
+        provinsiId: row.provinsiId,
+        kabupatenId: row.kabupatenId,
+        kecamatanId: row.kecamatanId,
+        kecamatanNama: row.kecamatanNama,
+        desaId: row.desaId,
+        desaNama: row.desaNama,
+        status: row.status,
+        isInsideKaranganyar: row.isInsideKaranganyar,
+        metadata: row.metadata,
+      },
+      update: {
+        platform: row.platform,
+        namaUsaha: row.namaUsaha,
+        kbliKategori: row.kbliKategori,
+        provinsiId: row.provinsiId,
+        kabupatenId: row.kabupatenId,
+        kecamatanId: row.kecamatanId,
+        kecamatanNama: row.kecamatanNama,
+        desaId: row.desaId,
+        desaNama: row.desaNama,
+        status: row.status,
+        isInsideKaranganyar: row.isInsideKaranganyar,
+        metadata: row.metadata,
+      },
+    });
+    upsertedIndustry += 1;
+  }
+
+  console.log(
+    [
+      `Users seed complete. Created: ${created}, Skipped: ${skipped}`,
+      `Industry seed upserted: ${upsertedIndustry}`,
+      `Google Maps: ${industrySeed.googleRows.length}`,
+      `YouTube: ${industrySeed.youtubeRows.length}`,
+      `TikTok: ${industrySeed.tiktokRows.length}`,
+    ].join("\n"),
+  );
 }
 
 main()

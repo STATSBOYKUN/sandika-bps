@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 
+import { PageSkeletonContent } from "@/components/layout/PageSkeleton";
 import PageHeader from "@/components/layout/PageHeader";
 import PageShell from "@/components/layout/PageShell";
 import { useTimedAlert } from "@/contexts/TimedAlertContext";
@@ -120,9 +121,7 @@ export default function ProfilePage() {
   if (isPending || !session) {
     return (
       <PageShell width="4xl">
-        <div className="rounded-xl border border-base-300 bg-base-200/50 p-6 text-sm text-base-content/70">
-          Memuat profil...
-        </div>
+        <PageSkeletonContent variant="form" />
       </PageShell>
     );
   }

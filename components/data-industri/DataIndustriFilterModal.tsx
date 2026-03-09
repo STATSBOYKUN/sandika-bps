@@ -49,7 +49,7 @@ export default function DataIndustriFilterModal({
 
   return (
     <div className="modal modal-open overflow-x-hidden">
-      <div className="modal-box mx-auto">
+      <div className="modal-box mx-auto w-[calc(100%-1rem)] max-w-[95vw] p-4 sm:w-full sm:max-w-3xl sm:p-6 lg:max-w-4xl">
         <div className="border-b border-base-200 pb-3 sm:pb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">

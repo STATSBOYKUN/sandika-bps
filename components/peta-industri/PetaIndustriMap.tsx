@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Focus,
     Layers,
-    LoaderCircle,
+    RefreshCw,
     Search,
     SlidersHorizontal,
 } from "lucide-react";
@@ -12,10 +12,8 @@ import type { FeatureCollection, Geometry } from "geojson";
 import type { StyleSpecification } from "maplibre-gl";
 
 import DataIndustriDetailModal from "@/components/data-industri/DataIndustriDetailModal";
-import {
-    PLATFORM_FILTER_OPTIONS,
-    type IndustryRow,
-} from "@/components/data-industri/types";
+import PageState from "@/components/layout/PageState";
+import { type IndustryRow } from "@/components/data-industri/types";
 import MapFilterModal from "@/components/peta-industri/MapFilterModal";
 import MapLayerModal from "@/components/peta-industri/MapLayerModal";
 import PetaIndustriMapCanvas from "@/components/peta-industri/PetaIndustriMapCanvas";
@@ -40,7 +38,6 @@ const STATUS_OPTIONS: IndustryRow["status"][] = [
 
 const DEFAULT_FILTERS: MapFilters = {
     search: "",
-    platforms: [...PLATFORM_FILTER_OPTIONS],
     statuses: [...STATUS_OPTIONS],
     kecamatan: "Semua",
     desa: "Semua",
@@ -84,6 +81,7 @@ const MAP_STYLES: Record<BasemapOption, string | StyleSpecification> = {
 export default function PetaIndustriMap() {
     const [rows, setRows] = useState<IndustryRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
     const [wilayahMode, setWilayahMode] = useState<WilayahMode>("kecamatan");
     const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
     const [tempFilters, setTempFilters] = useState<MapFilters>(DEFAULT_FILTERS);
@@ -96,36 +94,44 @@ export default function PetaIndustriMap() {
     const [selectedRow, setSelectedRow] = useState<IndustryRow | null>(null);
     const [focusToken, setFocusToken] = useState(0);
 
-    useEffect(() => {
-        let active = true;
-        const load = async () => {
-            setLoading(true);
-            const payload = await buildLargeIndustryPayload(25_000);
-            if (!active) return;
+    const loadRows = useCallback(async () => {
+        setLoading(true);
+        setHasError(false);
+        try {
+            const payload = await buildLargeIndustryPayload();
             setRows(payload);
+        } catch {
+            setHasError(true);
+            setRows([]);
+        } finally {
             setLoading(false);
-        };
-        void load();
-        return () => {
-            active = false;
-        };
+        }
     }, []);
 
+    useEffect(() => {
+        void loadRows();
+    }, [loadRows]);
+
+    const mapRows = useMemo(
+        () => rows.filter((row) => row.platform === "Google Maps"),
+        [rows],
+    );
+
     const kecamatanOptions = useMemo(() => {
-        const values = new Set(rows.map((row) => row.kecamatanNama));
+        const values = new Set(mapRows.map((row) => row.kecamatanNama));
         return [
             "Semua",
             ...Array.from(values).sort((a, b) => a.localeCompare(b, "id-ID")),
         ];
-    }, [rows]);
+    }, [mapRows]);
 
     const layers: LayerVisibility = DEFAULT_LAYERS;
 
     const tempDesaOptions = useMemo(() => {
         const filteredByKec =
             tempFilters.kecamatan === "Semua"
-                ? rows
-                : rows.filter(
+                ? mapRows
+                : mapRows.filter(
                       (row) => row.kecamatanNama === tempFilters.kecamatan,
                   );
         const values = new Set(filteredByKec.map((row) => row.desaNama));
@@ -133,12 +139,11 @@ export default function PetaIndustriMap() {
             "Semua",
             ...Array.from(values).sort((a, b) => a.localeCompare(b, "id-ID")),
         ];
-    }, [rows, tempFilters.kecamatan]);
+    }, [mapRows, tempFilters.kecamatan]);
 
     const filteredRows = useMemo(() => {
         const q = filters.search.trim().toLowerCase();
-        return rows.filter((row) => {
-            if (!filters.platforms.includes(row.platform)) return false;
+        return mapRows.filter((row) => {
             if (!filters.statuses.includes(row.status)) return false;
             if (
                 filters.kecamatan !== "Semua" &&
@@ -159,7 +164,7 @@ export default function PetaIndustriMap() {
                 .toLowerCase()
                 .includes(q);
         });
-    }, [filters, rows]);
+    }, [filters, mapRows]);
 
     const rowById = useMemo(() => {
         const map = new Map<string, IndustryRow>();
@@ -244,9 +249,6 @@ export default function PetaIndustriMap() {
                             <span className="badge badge-primary">
                                 Mode: {wilayahMode === "desa" ? "Desa" : "Kecamatan"}
                             </span>
-                            <span className="badge badge-secondary">
-                                Platform: {filters.platforms.length}
-                            </span>
                             <span className="badge badge-accent">
                                 Status: {filters.statuses.length}
                             </span>
@@ -277,39 +279,76 @@ export default function PetaIndustriMap() {
 
             <div className="relative h-[56dvh] min-h-[340px] overflow-hidden rounded-xl border border-base-300 bg-base-100 sm:h-[60dvh] md:h-[600px]">
                 {loading ? (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center gap-3 bg-base-100/90">
-                        <LoaderCircle className="h-5 w-5 animate-spin text-primary" />
-                        <p className="text-sm text-base-content/70">
-                            Memuat payload spasial industri skala besar...
-                        </p>
+                    <div className="h-full p-3 sm:p-4">
+                        <div className="h-full space-y-3 rounded-xl border border-base-300 bg-base-100 p-3">
+                            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                                {Array.from({ length: 6 }).map((_, index) => (
+                                    <div key={`map-loading-badge-${index}`} className="skeleton h-6 w-full" />
+                                ))}
+                            </div>
+                            <div className="skeleton h-[calc(100%-3rem)] min-h-[280px] w-full rounded-lg" />
+                        </div>
                     </div>
-                ) : null}
+                ) : hasError ? (
+                    <PageState
+                        variant="error"
+                        title="Peta belum bisa ditampilkan"
+                        description="Terjadi kendala saat memuat data spasial."
+                        className="grid h-full place-content-center border-0 bg-transparent shadow-none"
+                        action={
+                            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={() => void loadRows()}>
+                                <RefreshCw className="h-4 w-4" />
+                                Coba Lagi
+                            </button>
+                        }
+                    />
+                ) : filteredRows.length === 0 ? (
+                    <PageState
+                        variant="empty"
+                        title="Tidak ada titik pada filter ini"
+                        description="Peta disembunyikan karena tidak ada data yang cocok."
+                        className="grid h-full place-content-center border-0 bg-transparent shadow-none"
+                        action={
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => {
+                                    setFilters(DEFAULT_FILTERS);
+                                    setTempFilters(DEFAULT_FILTERS);
+                                }}
+                            >
+                                Reset Filter
+                            </button>
+                        }
+                    />
+                ) : (
+                    <>
+                        <PetaIndustriMapCanvas
+                            boundaryMode={wilayahMode}
+                            boundaryData={activeBoundary}
+                            pointsData={pointGeoJson}
+                            layers={layers}
+                            selectedPoint={selectedRow}
+                            focusToken={focusToken}
+                            mapStyle={MAP_STYLES[basemap]}
+                            rowById={rowById}
+                            onHoverBoundaryName={setHoveredBoundaryName}
+                            onSelectPoint={setSelectedRow}
+                        />
 
-                <PetaIndustriMapCanvas
-                    boundaryMode={wilayahMode}
-                    boundaryData={activeBoundary}
-                    pointsData={pointGeoJson}
-                    layers={layers}
-                    selectedPoint={selectedRow}
-                    focusToken={focusToken}
-                    mapStyle={MAP_STYLES[basemap]}
-                    rowById={rowById}
-                    onHoverBoundaryName={setHoveredBoundaryName}
-                    onSelectPoint={setSelectedRow}
-                />
-
-                <div className="absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)] rounded-lg border border-base-300 bg-base-100/90 px-2.5 py-2 text-[11px] sm:left-3 sm:top-3 sm:px-3 sm:text-xs">
-                    {hoveredBoundaryName
-                        ? `Wilayah ${wilayahMode === "desa" ? "Desa " : "Kecamatan "}: ${hoveredBoundaryName}`
-                        : `Arahkan kursor ke ${wilayahMode === "desa" ? "Desa " : "Kecamatan "}`}
-                </div>
+                        <div className="absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)] rounded-lg border border-base-300 bg-base-100/90 px-2.5 py-2 text-[11px] sm:left-3 sm:top-3 sm:px-3 sm:text-xs">
+                            {hoveredBoundaryName
+                                ? `Wilayah ${wilayahMode === "desa" ? "Desa " : "Kecamatan "}: ${hoveredBoundaryName}`
+                                : `Arahkan kursor ke ${wilayahMode === "desa" ? "Desa " : "Kecamatan "}`}
+                        </div>
+                    </>
+                )}
             </div>
 
             <MapFilterModal
                 isOpen={isFilterModalOpen}
                 wilayahMode={wilayahMode}
                 filters={tempFilters}
-                platformOptions={PLATFORM_FILTER_OPTIONS}
                 statusOptions={STATUS_OPTIONS}
                 kecamatanOptions={kecamatanOptions}
                 desaOptions={tempDesaOptions}

@@ -118,8 +118,8 @@ export default function DataIndustriTable({
                                         colSpan={header.colSpan}
                                         className={
                                             header.column.getCanSort()
-                                                ? "relative select-none"
-                                                : ""
+                                                ? "relative select-none whitespace-normal break-words align-top"
+                                                : "whitespace-normal break-words align-top"
                                         }
                                         style={{
                                             position: "relative",
@@ -219,7 +219,7 @@ export default function DataIndustriTable({
                                     data-index={virtualRow.index}
                                     className={
                                         !row.original.isInsideKaranganyar
-                                            ? "bg-warning/20 border-y border-warning/30 hover:bg-warning/25"
+                                            ? "bg-error/12 border-y border-error/35 border-l-4 border-l-error hover:bg-error/20"
                                             : "hover:bg-base-200/70"
                                     }
                                     onClick={() => onRowClick(row.original)}
@@ -230,7 +230,7 @@ export default function DataIndustriTable({
                                             style={{
                                                 width: `${cell.column.getSize()}px`,
                                             }}
-                                            className="cursor-pointer"
+                                            className="cursor-pointer whitespace-normal break-words align-top"
                                         >
                                             {flexRender(
                                                 cell.column.columnDef.cell,
@@ -253,11 +253,6 @@ export default function DataIndustriTable({
                     </tbody>
                 </table>
 
-                {rows.length === 0 && (
-                    <div className="flex h-24 items-center justify-center text-sm text-base-content/60">
-                        Tidak ada data untuk ditampilkan.
-                    </div>
-                )}
             </div>
 
             <div className="flex flex-col gap-3 border-t border-base-300 bg-base-200/40 px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between">

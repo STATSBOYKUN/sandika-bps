@@ -22,6 +22,47 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
+function formatShortDesaId(value: string) {
+  const last = value.split(".").at(-1) ?? value;
+  const trimmed = last.replace(/^0+/, "");
+  return trimmed || "0";
+}
+
+function provinsiNamaById(provinsiId: string) {
+  if (provinsiId === "33") return "Jawa Tengah";
+  return "Tidak diketahui";
+}
+
+function kabupatenNamaById(kabupatenId: string) {
+  if (kabupatenId === "13") return "Karanganyar";
+  return "Tidak diketahui";
+}
+
+function getWilayahView(row: IndustryRow) {
+  if (row.platform === "Google Maps") {
+    return row.metadata.wilayah;
+  }
+
+  return {
+    provinsi: {
+      id: row.provinsiId,
+      nama: provinsiNamaById(row.provinsiId),
+    },
+    kabupaten: {
+      id: row.kabupatenId,
+      nama: kabupatenNamaById(row.kabupatenId),
+    },
+    kecamatan: {
+      id: row.kecamatanId,
+      nama: row.kecamatanNama,
+    },
+    desa: {
+      id: formatShortDesaId(row.desaId),
+      nama: row.desaNama,
+    },
+  };
+}
+
 function baseColumns(): ColumnDef<IndustryRow>[] {
   return [
     {
@@ -38,6 +79,7 @@ function baseColumns(): ColumnDef<IndustryRow>[] {
       header: "Nama Usaha",
       size: 320,
       minSize: 260,
+      cell: (info) => <span className="whitespace-normal break-words leading-relaxed">{String(info.getValue())}</span>,
     },
     {
       accessorKey: "kbliKategori",
@@ -50,16 +92,53 @@ function baseColumns(): ColumnDef<IndustryRow>[] {
         return selected.includes(row.getValue(columnId));
       },
       cell: (info) => (
-        <span className="line-clamp-2 leading-relaxed">{String(info.getValue())}</span>
+        <span className="whitespace-normal break-words leading-relaxed">{String(info.getValue())}</span>
       ),
     },
     {
-      accessorKey: "kecamatanNama",
-      header: "Kecamatan",
-      size: 260,
-      minSize: 200,
+      accessorFn: (row) => {
+        const wilayah = getWilayahView(row);
+        return `${wilayah.provinsi.id} - ${wilayah.provinsi.nama}`;
+      },
+      id: "provinsi",
+      header: "Provinsi",
+      size: 280,
+      minSize: 210,
+      cell: (info) => <span className="whitespace-normal break-words leading-relaxed">{String(info.getValue())}</span>,
     },
-    { accessorKey: "desaNama", header: "Desa", size: 260, minSize: 200 },
+    {
+      accessorFn: (row) => {
+        const wilayah = getWilayahView(row);
+        return `${wilayah.kabupaten.id} - ${wilayah.kabupaten.nama}`;
+      },
+      id: "kabupaten",
+      header: "Kabupaten",
+      size: 300,
+      minSize: 220,
+      cell: (info) => <span className="whitespace-normal break-words leading-relaxed">{String(info.getValue())}</span>,
+    },
+    {
+      accessorFn: (row) => {
+        const wilayah = getWilayahView(row);
+        return `${wilayah.kecamatan.id} - ${wilayah.kecamatan.nama}`;
+      },
+      id: "kecamatan",
+      header: "Kecamatan",
+      size: 300,
+      minSize: 220,
+      cell: (info) => <span className="whitespace-normal break-words leading-relaxed">{String(info.getValue())}</span>,
+    },
+    {
+      accessorFn: (row) => {
+        const wilayah = getWilayahView(row);
+        return `${formatShortDesaId(wilayah.desa.id)} - ${wilayah.desa.nama}`;
+      },
+      id: "desa",
+      header: "Desa",
+      size: 300,
+      minSize: 220,
+      cell: (info) => <span className="whitespace-normal break-words leading-relaxed">{String(info.getValue())}</span>,
+    },
     {
       accessorKey: "status",
       header: "Status",
@@ -310,6 +389,8 @@ export const DATA_INDUSTRI_TABS: DataIndustriTabConfig[] = [
       return [
         row.id,
         row.namaUsaha,
+        row.provinsiId,
+        row.kabupatenId,
         row.kecamatanNama,
         row.desaNama,
         row.metadata.placeId,
@@ -328,6 +409,8 @@ export const DATA_INDUSTRI_TABS: DataIndustriTabConfig[] = [
       return [
         row.id,
         row.namaUsaha,
+        row.provinsiId,
+        row.kabupatenId,
         row.kecamatanNama,
         row.metadata.channelTitle,
         row.metadata.videoTitle,
@@ -346,6 +429,8 @@ export const DATA_INDUSTRI_TABS: DataIndustriTabConfig[] = [
       return [
         row.id,
         row.namaUsaha,
+        row.provinsiId,
+        row.kabupatenId,
         row.kecamatanNama,
         row.metadata.authorUsername,
         row.metadata.videoTitle,

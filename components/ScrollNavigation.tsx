@@ -17,6 +17,7 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { data: session } = authClient.useSession();
+    const [isMounted, setIsMounted] = React.useState(false);
     const [isAtTop, setIsAtTop] = React.useState(true);
     const sectionHeaders: Record<number, string> = {
         0: "Utama",
@@ -31,14 +32,22 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
     };
 
     React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    React.useEffect(() => {
         if (typeof window === "undefined") return;
         const handleScroll = () => setIsAtTop(window.scrollY === 0);
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    const displayName = session?.user.name?.trim() || "Pengguna";
-    const avatarInitial = displayName.charAt(0).toUpperCase() || "P";
+    const displayName = isMounted
+        ? session?.user.name?.trim() || "Pengguna"
+        : "Pengguna";
+    const avatarInitial = isMounted
+        ? displayName.charAt(0).toUpperCase() || "P"
+        : "P";
 
     const handleLogout = async () => {
         await authClient.signOut();

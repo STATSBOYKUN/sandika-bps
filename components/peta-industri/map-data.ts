@@ -2,14 +2,14 @@ import type { IndustryRow } from "@/components/data-industri/types";
 
 import type { IndustryPointGeoJson } from "@/components/peta-industri/types";
 
-import { buildDummyRows } from "@/components/data-industri/mock-data";
-
-export function buildLargeIndustryPayload(total = 25_000) {
-  return new Promise<IndustryRow[]>((resolve) => {
-    window.setTimeout(() => {
-      resolve(buildDummyRows(total));
-    }, 900);
+export async function buildLargeIndustryPayload() {
+  const response = await fetch("/api/industry", {
+    cache: "no-store",
   });
+
+  if (!response.ok) return [];
+  const payload = (await response.json()) as { data?: IndustryRow[] };
+  return Array.isArray(payload.data) ? payload.data : [];
 }
 
 export function rowsToPointGeoJson(rows: IndustryRow[]): IndustryPointGeoJson {

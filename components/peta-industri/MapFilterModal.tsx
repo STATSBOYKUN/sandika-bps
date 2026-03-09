@@ -1,9 +1,6 @@
 import { Check, Filter, RefreshCw, X } from "lucide-react";
 
-import type {
-    IndustryPlatform,
-    IndustryRow,
-} from "@/components/data-industri/types";
+import type { IndustryRow } from "@/components/data-industri/types";
 
 import type { MapFilters, WilayahMode } from "@/components/peta-industri/types";
 
@@ -11,7 +8,6 @@ interface MapFilterModalProps {
     isOpen: boolean;
     wilayahMode: WilayahMode;
     filters: MapFilters;
-    platformOptions: readonly IndustryPlatform[];
     statusOptions: readonly IndustryRow["status"][];
     kecamatanOptions: string[];
     desaOptions: string[];
@@ -26,7 +22,6 @@ export default function MapFilterModal({
     isOpen,
     wilayahMode,
     filters,
-    platformOptions,
     statusOptions,
     kecamatanOptions,
     desaOptions,
@@ -38,12 +33,11 @@ export default function MapFilterModal({
 }: MapFilterModalProps) {
     if (!isOpen) return null;
 
-    const activePlatformCount = filters.platforms.length;
     const activeStatusCount = filters.statuses.length;
 
     return (
         <div className="modal modal-open overflow-x-hidden">
-            <div className="modal-box mx-auto">
+            <div className="modal-box mx-auto w-[calc(100%-1rem)] max-w-[95vw] p-4 sm:w-full sm:max-w-3xl sm:p-6 lg:max-w-4xl">
                 <div className="border-b border-base-200 pb-3 sm:pb-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
@@ -73,9 +67,6 @@ export default function MapFilterModal({
                         <span className="badge badge-primary">
                             Mode:{" "}
                             {wilayahMode === "desa" ? "Desa" : "Kecamatan"}
-                        </span>
-                        <span className="badge badge-secondary">
-                            Platform: {activePlatformCount}
                         </span>
                         <span className="badge badge-accent">
                             Status: {activeStatusCount}
@@ -157,53 +148,6 @@ export default function MapFilterModal({
                             <div className="rounded-2xl border border-base-300 bg-base-100 p-3 sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-2">
                                     <h4 className="text-sm font-semibold">
-                                        Platform
-                                    </h4>
-                                    <span className="badge badge-sm badge-secondary">
-                                        {activePlatformCount}
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {platformOptions.map((platform) => {
-                                        const active =
-                                            filters.platforms.includes(
-                                                platform,
-                                            );
-                                        return (
-                                            <button
-                                                key={platform}
-                                                type="button"
-                                                className={`btn btn-sm ${active ? "btn-primary" : "btn-outline"}`}
-                                                onClick={() => {
-                                                    const next = active
-                                                        ? filters.platforms.filter(
-                                                              (item) =>
-                                                                  item !==
-                                                                  platform,
-                                                          )
-                                                        : [
-                                                              ...filters.platforms,
-                                                              platform,
-                                                          ];
-                                                    onChange({
-                                                        ...filters,
-                                                        platforms: next,
-                                                    });
-                                                }}
-                                            >
-                                                {active ? (
-                                                    <Check className="h-3 w-3" />
-                                                ) : null}
-                                                {platform}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-base-300 bg-base-100 p-3 sm:p-4">
-                                <div className="mb-3 flex items-center justify-between gap-2">
-                                    <h4 className="text-sm font-semibold">
                                         Status
                                     </h4>
                                     <span className="badge badge-sm badge-accent">
@@ -270,10 +214,7 @@ export default function MapFilterModal({
                             type="button"
                             className="btn btn-primary w-full sm:w-auto"
                             onClick={onApply}
-                            disabled={
-                                filters.platforms.length === 0 ||
-                                filters.statuses.length === 0
-                            }
+                            disabled={filters.statuses.length === 0}
                         >
                             Terapkan
                         </button>

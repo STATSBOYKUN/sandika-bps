@@ -68,7 +68,15 @@ function buildGoogleMapsDirectionUrl(latitude: number, longitude: number) {
 
 function metadataFields(row: IndustryRow): Array<[string, string]> {
     if (row.platform === "Google Maps") {
+        const wilayahFields: Array<[string, string]> = [
+            ["Provinsi", `${row.metadata.wilayah.provinsi.id} - ${row.metadata.wilayah.provinsi.nama}`],
+            ["Kabupaten", `${row.metadata.wilayah.kabupaten.id} - ${row.metadata.wilayah.kabupaten.nama}`],
+            ["Kecamatan", `${row.metadata.wilayah.kecamatan.id} - ${row.metadata.wilayah.kecamatan.nama}`],
+            ["Desa", `${row.metadata.wilayah.desa.id} - ${row.metadata.wilayah.desa.nama}`],
+        ];
+
         return [
+            ...wilayahFields,
             ["Latitude", row.metadata.latitude.toFixed(6)],
             ["Longitude", row.metadata.longitude.toFixed(6)],
             ["Place ID", row.metadata.placeId],

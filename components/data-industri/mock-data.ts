@@ -147,15 +147,38 @@ function buildBaseRow(index: number, id: number): IndustryBaseRow {
   };
 }
 
+function buildWilayah(base: IndustryBaseRow) {
+  return {
+    provinsi: {
+      id: base.provinsiId,
+      nama: base.provinsiId === "33" ? "Jawa Tengah" : "Tidak diketahui",
+    },
+    kabupaten: {
+      id: base.kabupatenId,
+      nama: base.kabupatenId === "13" ? "Karanganyar" : "Tidak diketahui",
+    },
+    kecamatan: {
+      id: base.kecamatanId,
+      nama: base.kecamatanNama,
+    },
+    desa: {
+      id: base.desaId,
+      nama: base.desaNama,
+    },
+  };
+}
+
 function buildGoogleMapsRow(base: IndustryBaseRow, index: number): GoogleMapsIndustryRow {
   const point = base.isInsideKaranganyar ? generateInsidePoint() : generateOutsidePoint();
   const latitude = Number(point.lat.toFixed(6));
   const longitude = Number(point.lng.toFixed(6));
+  const wilayah = buildWilayah(base);
 
   return {
     ...base,
     platform: "Google Maps",
     metadata: {
+      wilayah,
       latitude,
       longitude,
       placeId: `ChI${base.id.replace("ENT-", "")}KRA${index.toString().padStart(3, "0")}`,
