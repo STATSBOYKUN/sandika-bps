@@ -15,8 +15,8 @@ File: `lib/auth.ts`
 - Database adapter: Prisma + provider PostgreSQL
 - `emailAndPassword.enabled = true`
 - Provider Google membaca env:
-  - `GOOGLE_CLIENT_ID`
-  - `GOOGLE_CLIENT_SECRET`
+    - `GOOGLE_CLIENT_ID`
+    - `GOOGLE_CLIENT_SECRET`
 
 ## Konfigurasi client auth
 
@@ -50,5 +50,5 @@ File: `app/(auth)/login/page.tsx`
 ## Session usage
 
 - `authClient.useSession()` dipakai untuk:
-  - redirect user yang sudah login dari halaman login
-  - tampilkan nama user di sidebar/topbar
+    - redirect user yang sudah login dari halaman login
+    - tampilkan nama user di sidebar/topbar

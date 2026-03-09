@@ -53,7 +53,7 @@ Contoh fetch saat mount:
 
 ```tsx
 useEffect(() => {
-  void loadRows();
+	void loadRows();
 }, [loadRows]);
 ```
 
@@ -98,7 +98,7 @@ Contoh:
 
 ```tsx
 const filteredRows = useMemo(() => {
-  return rows.filter((row) => row.status === "Aktif");
+	return rows.filter((row) => row.status === "Aktif");
 }, [rows]);
 ```
 
@@ -120,7 +120,7 @@ Contoh:
 
 ```tsx
 const loadRows = useCallback(async () => {
-  // fetch data
+	// fetch data
 }, []);
 ```
 
@@ -140,7 +140,7 @@ const [searchInput, setSearchInput] = useState("");
 const deferredSearch = useDeferredValue(searchInput);
 
 useEffect(() => {
-  setGlobalFilter(deferredSearch.trim());
+	setGlobalFilter(deferredSearch.trim());
 }, [deferredSearch]);
 ```
 
@@ -177,12 +177,12 @@ Pattern dasar:
 type Action = { type: "set_name"; payload: string };
 
 function reducer(state: { name: string }, action: Action) {
-  switch (action.type) {
-    case "set_name":
-      return { ...state, name: action.payload };
-    default:
-      return state;
-  }
+	switch (action.type) {
+		case "set_name":
+			return { ...state, name: action.payload };
+		default:
+			return state;
+	}
 }
 ```
 
@@ -205,7 +205,7 @@ Pattern dasar:
 const [isPending, startTransition] = useTransition();
 
 startTransition(() => {
-  setBigState(next);
+	setBigState(next);
 });
 ```
 

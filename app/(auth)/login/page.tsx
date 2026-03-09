@@ -3,202 +3,233 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-    ArrowRight,
-    Chrome,
-    KeyRound,
-    UserRound,
-    AlertCircle,
-} from "lucide-react";
+import { ArrowRight, Chrome, KeyRound, UserRound } from "lucide-react";
 
+import { useTimedAlert } from "@/contexts/TimedAlertContext";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
-    const router = useRouter();
-    const { data: session, isPending } = authClient.useSession();
-    const [identifier, setIdentifier] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+	const router = useRouter();
+	const { showAlert } = useTimedAlert();
+	const { data: session, isPending } = authClient.useSession();
+	const [identifier, setIdentifier] = useState("");
+	const [password, setPassword] = useState("");
+	const [fieldErrors, setFieldErrors] = useState({
+		identifier: false,
+		password: false,
+	});
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (!isPending && session) {
-            router.replace("/");
-        }
-    }, [isPending, router, session]);
+	const mapAuthError = (message?: string) => {
+		if (!message) return "Terjadi kesalahan saat login. Silakan coba lagi.";
+		const normalized = message.toLowerCase();
+		if (
+			normalized.includes("invalid username or password") ||
+			normalized.includes("invalid credentials") ||
+			normalized.includes("wrong password")
+		) {
+			return "Username atau password yang Anda masukkan salah.";
+		}
+		if (normalized.includes("too many")) {
+			return "Terlalu banyak percobaan login. Coba beberapa saat lagi.";
+		}
+		return message;
+	};
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!identifier.trim() || !password.trim()) {
-            setError("Username dan password wajib diisi.");
-            return;
-        }
+	useEffect(() => {
+		if (!isPending && session) {
+			router.replace("/");
+		}
+	}, [isPending, router, session]);
 
-        setIsSubmitting(true);
-        const { error: signInError } = await authClient.signIn.username({
-            username: identifier.trim(),
-            password,
-            callbackURL: "/profile",
-        });
+	const handleLogin = async (e: React.FormEvent) => {
+		e.preventDefault();
+		const hasIdentifier = Boolean(identifier.trim());
+		const hasPassword = Boolean(password.trim());
+		setFieldErrors({
+			identifier: !hasIdentifier,
+			password: !hasPassword,
+		});
 
-        if (signInError) {
-            setError(signInError.message || "Kredensial yang Anda masukkan salah.");
-            setIsSubmitting(false);
-            return;
-        }
+		if (!hasIdentifier || !hasPassword) {
+			showAlert({
+				variant: "error",
+				title: "Validasi gagal",
+				description: "Username dan password wajib diisi.",
+			});
+			return;
+		}
 
-        setIsSubmitting(false);
-        if (!signInError) {
-            setError(null);
-            router.push("/profile");
-        }
-    };
+		setIsSubmitting(true);
+		const { error: signInError } = await authClient.signIn.username({
+			username: identifier.trim(),
+			password,
+			callbackURL: "/profile",
+		});
 
-    const handleGoogleLogin = async () => {
-        setError(null);
-        setIsGoogleSubmitting(true);
-        const { error: socialError } = await authClient.signIn.social({
-            provider: "google",
-            callbackURL: "/profile",
-        });
+		if (signInError) {
+			showAlert({
+				variant: "error",
+				title: "Login gagal",
+				description: mapAuthError(signInError.message),
+			});
+			setIsSubmitting(false);
+			return;
+		}
 
-        if (socialError) {
-            setError(socialError.message || "Gagal login dengan Google.");
-            setIsGoogleSubmitting(false);
-        }
-    };
+		setIsSubmitting(false);
+		if (!signInError) {
+			router.push("/profile");
+		}
+	};
 
-    return (
-        <main className="min-h-screen bg-base-100 flex items-center justify-center p-6 md:p-12">
-            <div className="flex flex-col lg:flex-row w-full max-w-5xl gap-10 lg:gap-20 items-center justify-center">
-                {/* Brand / Logo Section */}
-                <section className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
-                    <div className="relative w-16 h-16 md:w-20 md:h-20 mb-2">
-                        <Image
-                            src="/logo/Lambang_Badan_Pusat_Statistik_(BPS)_Indonesia.svg.png"
-                            alt="BPS Logo"
-                            fill
-                            className="object-contain"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                            Sandika <span className="text-primary">BPS</span>
-                        </h1>
-                        <p className="max-w-sm text-base-content/60 text-base leading-relaxed">
-                            Sistem Manajemen Data Industri Kabupaten
-                            Karanganyar. Silakan masuk untuk akses aplikasi.
-                        </p>
-                    </div>
-                </section>
+	const handleGoogleLogin = async () => {
+		setFieldErrors({ identifier: false, password: false });
+		setIsGoogleSubmitting(true);
+		const { error: socialError } = await authClient.signIn.social({
+			provider: "google",
+			callbackURL: "/profile",
+		});
 
-                {/* Form Section */}
-                <section className="w-full max-w-95">
-                    <div className="rounded-2xl border border-base-300 bg-base-200/30 p-6 md:p-8 shadow-sm backdrop-blur-sm">
-                        <form onSubmit={handleLogin} className="space-y-6">
-                            <div className="flex flex-col gap-4">
-                                <label className="form-control w-full space-y-1.5">
-                                        <span className="label-text font-medium text-sm px-0.5">
-                                            Username
-                                        </span>
-                                    <label
-                                        className={`input input-bordered h-11 flex items-center gap-3 bg-base-100 px-3 transition-all focus-within:ring-2 focus-within:ring-primary/20 ${error && !identifier ? "input-error" : ""}`}
-                                    >
-                                        <UserRound className="h-4 w-4 opacity-40 shrink-0" />
-                                        <input
-                                            type="text"
-                                            className="grow text-sm"
-                                            placeholder="Username"
-                                            value={identifier}
-                                            onChange={(e) => {
-                                                setIdentifier(e.target.value);
-                                                if (error) setError(null);
-                                            }}
-                                        />
-                                    </label>
-                                    {error && !identifier && (
-                                        <p className="flex items-center gap-1.5 px-0.5 mt-1 text-[11px] font-medium text-error animate-in fade-in slide-in-from-top-1">
-                                            <AlertCircle className="size-3" />
-                                            Username wajib diisi
-                                        </p>
-                                    )}
-                                </label>
+		if (socialError) {
+			showAlert({
+				variant: "error",
+				title: "Login Google gagal",
+				description: mapAuthError(socialError.message),
+			});
+			setIsGoogleSubmitting(false);
+		}
+	};
 
-                                <label className="form-control w-full space-y-1.5">
-                                    <div className="flex justify-between items-center px-0.5">
-                                        <span className="label-text font-medium text-sm">
-                                            Password
-                                        </span>
-                                        <a
-                                            href="#"
-                                            className="link link-hover text-xs text-primary font-medium"
-                                        >
-                                            Lupa password?
-                                        </a>
-                                    </div>
-                                    <label
-                                        className={`input input-bordered h-11 flex items-center gap-3 bg-base-100 px-3 transition-all focus-within:ring-2 focus-within:ring-primary/20 ${error && !password ? "input-error" : ""}`}
-                                    >
-                                        <KeyRound className="h-4 w-4 opacity-40 shrink-0" />
-                                        <input
-                                            type="password"
-                                            className="grow text-sm"
-                                            placeholder="••••••••"
-                                            value={password}
-                                            onChange={(e) => {
-                                                setPassword(e.target.value);
-                                                if (error) setError(null);
-                                            }}
-                                        />
-                                    </label>
-                                    {error && !password && (
-                                        <p className="flex items-center gap-1.5 px-0.5 mt-1 text-[11px] font-medium text-error animate-in fade-in slide-in-from-top-1">
-                                            <AlertCircle className="size-3" />
-                                            Password wajib diisi
-                                        </p>
-                                    )}
-                                </label>
-                            </div>
+	return (
+		<main className="bg-base-100 flex min-h-screen items-center justify-center p-6 md:p-12">
+			<div className="flex w-full max-w-5xl flex-col items-center justify-center gap-10 lg:flex-row lg:gap-20">
+				{/* Brand / Logo Section */}
+				<section className="flex flex-1 flex-col items-center space-y-4 text-center lg:items-start lg:text-left">
+					<div className="relative mb-2 h-16 w-16 md:h-20 md:w-20">
+						<Image
+							src="/logo/Lambang_Badan_Pusat_Statistik_(BPS)_Indonesia.svg.png"
+							alt="BPS Logo"
+							fill
+							className="object-contain"
+						/>
+					</div>
+					<div className="space-y-2">
+						<h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+							Sandika <span className="text-primary">BPS</span>
+						</h1>
+						<p className="text-base-content/60 max-w-sm text-base leading-relaxed">
+							Sistem Manajemen Data Industri Kabupaten
+							Karanganyar. Silakan masuk untuk akses aplikasi.
+						</p>
+					</div>
+				</section>
 
-                            {error && identifier && password && (
-                                <p className="text-center text-xs font-semibold text-error/90 bg-error/5 py-2 rounded-lg border border-error/10 animate-in zoom-in-95 duration-200">
-                                    {error}
-                                </p>
-                            )}
+				{/* Form Section */}
+				<section className="w-full max-w-95">
+					<div className="border-base-300 bg-base-200/30 rounded-2xl border p-6 shadow-sm backdrop-blur-sm md:p-8">
+						<form onSubmit={handleLogin} className="space-y-6">
+							<div className="flex flex-col gap-4">
+								<label className="form-control w-full space-y-1.5">
+									<span className="label-text px-0.5 text-sm font-medium">
+										Username
+									</span>
+									<label
+										className={`input input-bordered bg-base-100 focus-within:ring-primary/20 flex h-11 items-center gap-3 px-3 transition-all focus-within:ring-2 ${fieldErrors.identifier ? "input-error" : ""}`}
+									>
+										<UserRound className="h-4 w-4 shrink-0 opacity-40" />
+										<input
+											type="text"
+											className="grow text-sm"
+											placeholder="Username"
+											value={identifier}
+											onChange={(e) => {
+												setIdentifier(e.target.value);
+												if (fieldErrors.identifier) {
+													setFieldErrors((prev) => ({
+														...prev,
+														identifier: false,
+													}));
+												}
+											}}
+										/>
+									</label>
+								</label>
 
-                            <div className="space-y-3">
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || isGoogleSubmitting}
-                                    className="btn btn-neutral btn-sm h-11 w-full rounded-xl gap-2 shadow-sm font-semibold"
-                                >
-                                    {isSubmitting ? "Memproses..." : "Masuk"}
-                                    <ArrowRight className="h-4 w-4" />
-                                </button>
+								<label className="form-control w-full space-y-1.5">
+									<div className="flex items-center justify-between px-0.5">
+										<span className="label-text text-sm font-medium">
+											Password
+										</span>
+										<a
+											href="#"
+											className="link link-hover text-primary text-xs font-medium"
+										>
+											Lupa password?
+										</a>
+									</div>
+									<label
+										className={`input input-bordered bg-base-100 focus-within:ring-primary/20 flex h-11 items-center gap-3 px-3 transition-all focus-within:ring-2 ${fieldErrors.password ? "input-error" : ""}`}
+									>
+										<KeyRound className="h-4 w-4 shrink-0 opacity-40" />
+										<input
+											type="password"
+											className="grow text-sm"
+											placeholder="••••••••"
+											value={password}
+											onChange={(e) => {
+												setPassword(e.target.value);
+												if (fieldErrors.password) {
+													setFieldErrors((prev) => ({
+														...prev,
+														password: false,
+													}));
+												}
+											}}
+										/>
+									</label>
+								</label>
+							</div>
 
-                                <div className="divider text-[10px] uppercase tracking-widest text-base-content/30 py-1">
-                                    Akses Cepat
-                                </div>
+							<div className="space-y-3">
+								<button
+									type="submit"
+									disabled={
+										isSubmitting || isGoogleSubmitting
+									}
+									className="btn btn-neutral btn-sm h-11 w-full gap-2 rounded-xl font-semibold shadow-sm"
+								>
+									{isSubmitting ? "Memproses..." : "Masuk"}
+									<ArrowRight className="h-4 w-4" />
+								</button>
 
-                                <button
-                                    type="button"
-                                    disabled={isSubmitting || isGoogleSubmitting}
-                                    onClick={handleGoogleLogin}
-                                    className="btn btn-outline btn-sm h-11 w-full rounded-xl gap-2 border-base-300 hover:bg-base-300 transition-all font-semibold text-sm"
-                                >
-                                    <Chrome className="h-4 w-4" />
-                                    {isGoogleSubmitting ? "Mengarahkan..." : "Google Account"}
-                                </button>
-                            </div>
+								<div className="divider text-base-content/30 py-1 text-[10px] tracking-widest uppercase">
+									Akses Cepat
+								</div>
 
-                            <p className="text-center text-[10px] font-medium tracking-wide text-base-content/30 mt-2">
-                                SANDIKA - BPS INDONESIA v1.0.0
-                            </p>
-                        </form>
-                    </div>
-                </section>
-            </div>
-        </main>
-    );
+								<button
+									type="button"
+									disabled={
+										isSubmitting || isGoogleSubmitting
+									}
+									onClick={handleGoogleLogin}
+									className="btn btn-outline btn-sm border-base-300 hover:bg-base-300 h-11 w-full gap-2 rounded-xl text-sm font-semibold transition-all"
+								>
+									<Chrome className="h-4 w-4" />
+									{isGoogleSubmitting
+										? "Mengarahkan..."
+										: "Google Account"}
+								</button>
+							</div>
+
+							<p className="text-base-content/30 mt-2 text-center text-[10px] font-medium tracking-wide">
+								SANDIKA - BPS INDONESIA v1.0.0
+							</p>
+						</form>
+					</div>
+				</section>
+			</div>
+		</main>
+	);
 }

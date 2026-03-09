@@ -21,8 +21,8 @@ npx prisma db seed
 - File sumber: `prisma/seed/users.csv`
 - Parser CSV sederhana di `prisma/seed.ts`.
 - Untuk tiap baris valid:
-  - cek user existing berdasarkan email/username
-  - jika belum ada, create via `auth.api.signUpEmail(...)`
+    - cek user existing berdasarkan email/username
+    - jika belum ada, create via `auth.api.signUpEmail(...)`
 
 ## Seed industry
 
@@ -36,9 +36,9 @@ npx prisma db seed
 
 1. `readIndustrySeedData()` membaca semua file yang tersedia.
 2. Setiap file di-parse menjadi `IndustrySeedInput[]`:
-   - `buildGoogleMapsSeeds(...)`
-   - `buildYoutubeSeeds(...)`
-   - `buildTikTokSeeds(...)`
+    - `buildGoogleMapsSeeds(...)`
+    - `buildYoutubeSeeds(...)`
+    - `buildTikTokSeeds(...)`
 3. Baris di-upsert ke `industry_record` berdasarkan `sourceKey`.
 
 ## Logika geospasial penting

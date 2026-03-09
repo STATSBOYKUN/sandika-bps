@@ -17,15 +17,15 @@ SANDIKA BPS adalah aplikasi internal untuk manajemen data industri digital Kabup
 ## Modul utama aplikasi
 
 - `Dashboard` (`app/(main)/dashboard/page.tsx`)
-  - Menampilkan metrik ringkas dan aktivitas terbaru.
+    - Menampilkan metrik ringkas dan aktivitas terbaru.
 - `Data Industri` (`app/(main)/data-industri/page.tsx`)
-  - Menampilkan data industri lintas platform dalam tabel dengan filter, sort, dan pagination.
+    - Menampilkan data industri lintas platform dalam tabel dengan filter, sort, dan pagination.
 - `Peta Industri` (`app/(main)/peta-industri/page.tsx`)
-  - Menampilkan titik industri pada peta dengan boundary kecamatan/desa dan filter spasial.
+    - Menampilkan titik industri pada peta dengan boundary kecamatan/desa dan filter spasial.
 - `Panduan` (`app/(main)/panduan/page.tsx`)
-  - Konten panduan statis dalam aplikasi.
+    - Konten panduan statis dalam aplikasi.
 - `Bantuan` (`app/(main)/help/page.tsx`)
-  - Halaman ticketing berbasis localStorage.
+    - Halaman ticketing berbasis localStorage.
 
 ## Alur data tingkat tinggi
 

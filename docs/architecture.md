@@ -3,26 +3,26 @@
 ## Struktur direktori utama
 
 - `app/`
-  - Routing App Router, halaman, dan API route.
+    - Routing App Router, halaman, dan API route.
 - `components/`
-  - Komponen UI reusable dan komponen fitur.
+    - Komponen UI reusable dan komponen fitur.
 - `lib/`
-  - Utilitas domain, akses data, auth, dan mapping.
+    - Utilitas domain, akses data, auth, dan mapping.
 - `prisma/`
-  - Schema, migration, dan script seed.
+    - Schema, migration, dan script seed.
 - `constant/`
-  - Konstanta menu dan file geojson.
+    - Konstanta menu dan file geojson.
 - `public/`
-  - Aset statis dan data CSV seed.
+    - Aset statis dan data CSV seed.
 
 ## Routing layer
 
 - Root layout: `app/layout.tsx`
-  - Menetapkan metadata global, font, tema, dan global CSS.
+    - Menetapkan metadata global, font, tema, dan global CSS.
 - Main layout: `app/(main)/layout.tsx`
-  - Membungkus halaman dengan `ScrollNavigation` dan `TimedAlertProvider`.
+    - Membungkus halaman dengan `ScrollNavigation` dan `TimedAlertProvider`.
 - Auth page: `app/(auth)/login/page.tsx`
-  - Halaman login berbasis Better Auth client.
+    - Halaman login berbasis Better Auth client.
 
 ## Batas server dan client
 

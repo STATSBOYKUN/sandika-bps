@@ -1,15 +1,23 @@
 @import "tailwindcss";
 
 @plugin "daisyui" {
-  themes: winter --default, sunset --prefersdark, caramellatte, winter, sunset, forest, lemonade, coffee;
+	themes:
+		winter --default,
+		sunset --prefersdark,
+		caramellatte,
+		winter,
+		sunset,
+		forest,
+		lemonade,
+		coffee;
 }
 
 html {
-  scroll-behavior: smooth;
+	scroll-behavior: smooth;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
+	html {
+		scroll-behavior: smooth;
+	}
 }

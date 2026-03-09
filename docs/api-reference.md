@@ -10,20 +10,20 @@ Mengambil daftar data industri (urut `updatedAt` terbaru), hasil mapping ke shap
 
 ```json
 {
-  "data": [
-    {
-      "id": "string",
-      "platform": "Google Maps | YouTube | TikTok",
-      "namaUsaha": "string",
-      "kbliKategori": "string",
-      "kecamatanNama": "string",
-      "desaNama": "string",
-      "status": "Aktif | Verifikasi | Draft",
-      "isInsideKaranganyar": true,
-      "updatedAt": "YYYY-MM-DD HH:mm:ss",
-      "metadata": {}
-    }
-  ]
+	"data": [
+		{
+			"id": "string",
+			"platform": "Google Maps | YouTube | TikTok",
+			"namaUsaha": "string",
+			"kbliKategori": "string",
+			"kecamatanNama": "string",
+			"desaNama": "string",
+			"status": "Aktif | Verifikasi | Draft",
+			"isInsideKaranganyar": true,
+			"updatedAt": "YYYY-MM-DD HH:mm:ss",
+			"metadata": {}
+		}
+	]
 }
 ```
 
@@ -47,6 +47,6 @@ Health check sederhana untuk memastikan route API aktif.
 
 ```json
 {
-  "status": "ok"
+	"status": "ok"
 }
 ```

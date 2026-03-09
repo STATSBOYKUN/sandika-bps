@@ -5,17 +5,17 @@ import { username } from "better-auth/plugins/username";
 import { prisma } from "@/lib/prisma";
 
 export const auth = betterAuth({
-  database: prismaAdapter(prisma, {
-    provider: "postgresql",
-  }),
-  emailAndPassword: {
-    enabled: true,
-  },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    },
-  },
-  plugins: [username()],
+	database: prismaAdapter(prisma, {
+		provider: "postgresql",
+	}),
+	emailAndPassword: {
+		enabled: true,
+	},
+	socialProviders: {
+		google: {
+			clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+		},
+	},
+	plugins: [username()],
 });
