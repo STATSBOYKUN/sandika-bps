@@ -78,6 +78,17 @@ const MAP_STYLES: Record<BasemapOption, string | StyleSpecification> = {
 	dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
 };
 
+const BOUNDARY_GRADIENT_COLORS = [
+	"#99f6e4",
+	"#5eead4",
+	"#2dd4bf",
+	"#14b8a6",
+	"#0f766e",
+] as const;
+
+const normalizeBoundaryName = (value: string) =>
+	value.toLocaleLowerCase("id-ID").replace(/\s+/g, " ").trim();
+
 export default function PetaIndustriMap() {
 	const [rows, setRows] = useState<IndustryRow[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -93,6 +104,7 @@ export default function PetaIndustriMap() {
 	>(null);
 	const [selectedRow, setSelectedRow] = useState<IndustryRow | null>(null);
 	const [focusToken, setFocusToken] = useState(0);
+	const [isInfoHintExpanded, setIsInfoHintExpanded] = useState(true);
 
 	const loadRows = useCallback(async () => {
 		setLoading(true);
@@ -111,6 +123,16 @@ export default function PetaIndustriMap() {
 	useEffect(() => {
 		void loadRows();
 	}, [loadRows]);
+
+	useEffect(() => {
+		const timer = window.setTimeout(() => {
+			setIsInfoHintExpanded(false);
+		}, 10000);
+
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, []);
 
 	const mapRows = useMemo(
 		() => rows.filter((row) => row.platform === "Google Maps"),
@@ -179,6 +201,143 @@ export default function PetaIndustriMap() {
 
 	const activeBoundary =
 		wilayahMode === "desa" ? DESA_GEOJSON : KECAMATAN_GEOJSON;
+
+	const boundaryNameEntries = useMemo(() => {
+		return activeBoundary.features
+			.map((feature) => {
+				const properties =
+					typeof feature.properties === "object" && feature.properties
+						? (feature.properties as Record<string, unknown>)
+						: {};
+				const rawName =
+					wilayahMode === "desa"
+						? properties.kel_desa
+						: properties.kecamatan;
+				if (typeof rawName !== "string") return null;
+				const normalized = normalizeBoundaryName(rawName);
+				if (!normalized) return null;
+				return { normalized, label: rawName };
+			})
+			.filter((entry): entry is { normalized: string; label: string } =>
+				Boolean(entry),
+			);
+	}, [activeBoundary, wilayahMode]);
+
+	const boundaryPointCountByName = useMemo(() => {
+		const counts = new Map<string, number>();
+		for (const { normalized } of boundaryNameEntries) {
+			if (!counts.has(normalized)) counts.set(normalized, 0);
+		}
+
+		for (const row of filteredRows) {
+			const sourceName =
+				wilayahMode === "desa" ? row.desaNama : row.kecamatanNama;
+			const normalized = normalizeBoundaryName(sourceName);
+			if (!counts.has(normalized)) continue;
+			counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+		}
+
+		return counts;
+	}, [boundaryNameEntries, filteredRows, wilayahMode]);
+
+	const boundaryColorScale = useMemo(() => {
+		const values = Array.from(boundaryPointCountByName.values());
+		const min = values.length > 0 ? Math.min(...values) : 0;
+		const max = values.length > 0 ? Math.max(...values) : 0;
+		const span = max - min;
+
+		const getColorIndex = (count: number) => {
+			if (span <= 0) return 0;
+			const ratio = (count - min) / span;
+			return Math.min(
+				BOUNDARY_GRADIENT_COLORS.length - 1,
+				Math.floor(ratio * BOUNDARY_GRADIENT_COLORS.length),
+			);
+		};
+
+		if (span <= 0) {
+			return {
+				min,
+				max,
+				getColorIndex,
+				ranges: [
+					{
+						index: 0,
+						color: BOUNDARY_GRADIENT_COLORS[0],
+						label: `${min.toLocaleString("id-ID")}`,
+					},
+				],
+			};
+		}
+
+		const interval = span / BOUNDARY_GRADIENT_COLORS.length;
+		const ranges = BOUNDARY_GRADIENT_COLORS.map((color, index) => {
+			const start = min + interval * index;
+			const end =
+				index === BOUNDARY_GRADIENT_COLORS.length - 1
+					? max
+					: min + interval * (index + 1);
+
+			const labelMin =
+				index === 0 ? Math.round(start) : Math.floor(start) + 1;
+			let labelMax =
+				index === BOUNDARY_GRADIENT_COLORS.length - 1
+					? Math.round(end)
+					: Math.floor(end);
+
+			if (labelMax < labelMin) labelMax = labelMin;
+
+			return {
+				index,
+				color,
+				label: `${labelMin.toLocaleString("id-ID")} - ${labelMax.toLocaleString("id-ID")}`,
+			};
+		});
+
+		return {
+			min,
+			max,
+			getColorIndex,
+			ranges,
+		};
+	}, [boundaryPointCountByName]);
+
+	const boundaryDataWithCounts = useMemo<FeatureCollection<Geometry>>(() => {
+		return {
+			...activeBoundary,
+			features: activeBoundary.features.map((feature) => {
+				const properties =
+					typeof feature.properties === "object" && feature.properties
+						? (feature.properties as Record<string, unknown>)
+						: {};
+				const rawName =
+					wilayahMode === "desa"
+						? properties.kel_desa
+						: properties.kecamatan;
+				const normalized =
+					typeof rawName === "string"
+						? normalizeBoundaryName(rawName)
+						: "";
+				const pointCount =
+					boundaryPointCountByName.get(normalized) ?? 0;
+				const colorIndex = boundaryColorScale.getColorIndex(pointCount);
+
+				return {
+					...feature,
+					properties: {
+						...properties,
+						point_count: pointCount,
+						color_index: colorIndex,
+					},
+				};
+			}),
+		};
+	}, [
+		activeBoundary,
+		boundaryColorScale,
+		boundaryPointCountByName,
+		wilayahMode,
+	]);
 
 	return (
 		<section className="border-base-300 bg-base-200/50 space-y-4 rounded-xl border p-3 sm:p-4 md:p-5">
@@ -336,7 +495,8 @@ export default function PetaIndustriMap() {
 					<>
 						<PetaIndustriMapCanvas
 							boundaryMode={wilayahMode}
-							boundaryData={activeBoundary}
+							boundaryData={boundaryDataWithCounts}
+							boundaryFillColors={[...BOUNDARY_GRADIENT_COLORS]}
 							pointsData={pointGeoJson}
 							layers={layers}
 							selectedPoint={selectedRow}
@@ -354,6 +514,62 @@ export default function PetaIndustriMap() {
 						</div>
 					</>
 				)}
+			</div>
+
+			<div className="group">
+				<div
+					tabIndex={0}
+					role="button"
+					aria-label="Informasi rentang warna peta"
+					onMouseEnter={() => setIsInfoHintExpanded(true)}
+					onMouseLeave={() => setIsInfoHintExpanded(false)}
+					onFocus={() => setIsInfoHintExpanded(true)}
+					onBlur={() => setIsInfoHintExpanded(false)}
+					className={`border-info/30 text-base-content/80 focus-visible:ring-info/40 focus-visible:ring-offset-base-100 flex h-10 items-center gap-2 overflow-hidden rounded-lg border px-2.5 transition-all duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${
+						isInfoHintExpanded
+							? "bg-info/20 w-full"
+							: "bg-info/10 hover:bg-info/20 h-10 w-10 gap-1.5 px-2 group-focus-within:w-full hover:w-full"
+					}`}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						className="-ml-0.5 h-5 w-5 shrink-0 stroke-current opacity-95"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth="2"
+							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						></path>
+					</svg>
+
+					<div
+						className={`min-w-0 text-[13px] font-medium transition-all duration-300 ease-out ${
+							isInfoHintExpanded
+								? "max-w-[72rem] opacity-100"
+								: "max-w-0 opacity-0 group-focus-within:max-w-[72rem] group-focus-within:opacity-100 group-hover:max-w-[72rem] group-hover:opacity-100"
+						}`}
+					>
+						<div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+							{boundaryColorScale.ranges.map((range) => (
+								<div
+									key={`range-${range.index}`}
+									className="flex shrink-0 items-center gap-2 whitespace-nowrap"
+								>
+									<span
+										className="h-3.5 w-3.5 shrink-0 rounded-sm border border-black/10"
+										style={{
+											backgroundColor: range.color,
+										}}
+									/>
+									<span>{range.label}</span>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
 			</div>
 
 			<MapFilterModal

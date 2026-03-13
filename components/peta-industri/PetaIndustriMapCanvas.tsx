@@ -39,6 +39,7 @@ const INITIAL_VIEW = {
 interface PetaIndustriMapCanvasProps {
 	boundaryMode: WilayahMode;
 	boundaryData: BoundaryGeoJson;
+	boundaryFillColors: string[];
 	pointsData: IndustryPointGeoJson;
 	layers: LayerVisibility;
 	selectedPoint: IndustryRow | null;
@@ -52,6 +53,7 @@ interface PetaIndustriMapCanvasProps {
 export default function PetaIndustriMapCanvas({
 	boundaryMode,
 	boundaryData,
+	boundaryFillColors,
 	pointsData,
 	layers,
 	selectedPoint,
@@ -71,12 +73,26 @@ export default function PetaIndustriMapCanvas({
 		mapRef.current.getMap().jumpTo(INITIAL_VIEW);
 	}, [focusToken]);
 
+	const boundaryFillColorExpression = useMemo(() => {
+		const expression: unknown[] = [
+			"match",
+			["coalesce", ["get", "color_index"], 0],
+		];
+
+		for (const [index, color] of boundaryFillColors.entries()) {
+			expression.push(index, color);
+		}
+
+		expression.push(boundaryFillColors[0] ?? "#ecfeff");
+		return expression;
+	}, [boundaryFillColors]);
+
 	const boundaryFillLayer: LayerProps = {
 		id: "boundary-fill",
 		type: "fill",
 		paint: {
-			"fill-color": boundaryMode === "desa" ? "#0284c7" : "#16a34a",
-			"fill-opacity": 0.14,
+			"fill-color": boundaryFillColorExpression as never,
+			"fill-opacity": 0.52,
 		},
 	};
 
@@ -115,7 +131,7 @@ export default function PetaIndustriMapCanvas({
 				30,
 				"#f59e0b",
 				100,
-				"#dc2626",
+				"#0f766e",
 			],
 			"circle-radius": [
 				"step",
