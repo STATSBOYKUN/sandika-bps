@@ -1,6 +1,22 @@
 # Panduan React Hooks
 
-Dokumen ini fokus pada penggunaan hook React untuk developer di codebase ini.
+Dokumen ini adalah versi ringkas. Untuk materi lengkap langkah demi langkah, gunakan seri tutorial berikut:
+
+- `docs/tutorials/README.md`
+- `docs/tutorials/01-react-hooks-rules.md`
+- `docs/tutorials/02-use-state.md`
+- `docs/tutorials/03-use-effect.md`
+- `docs/tutorials/04-use-ref.md`
+- `docs/tutorials/05-use-memo.md`
+- `docs/tutorials/06-use-callback.md`
+- `docs/tutorials/07-use-context.md`
+- `docs/tutorials/08-use-reducer.md`
+- `docs/tutorials/09-use-id.md`
+- `docs/tutorials/10-use-transition.md`
+- `docs/tutorials/11-use-deferred-value.md`
+- `docs/tutorials/12-custom-hooks-pattern.md`
+
+Dokumen ini tetap dipertahankan sebagai referensi cepat untuk developer di codebase ini.
 
 ## Prinsip umum
 

@@ -225,11 +225,21 @@ function buildYoutubeRow(
 	base: IndustryBaseRow,
 	index: number,
 ): YouTubeIndustryRow {
+	const baseWithoutLocationIds = {
+		id: base.id,
+		namaUsaha: base.namaUsaha,
+		kbliKategori: base.kbliKategori,
+		kecamatanNama: base.kecamatanNama,
+		desaNama: base.desaNama,
+		status: base.status,
+		updatedAt: base.updatedAt,
+		isInsideKaranganyar: base.isInsideKaranganyar,
+	};
 	const channelCode = `UC${(100000000 + index).toString(36).toUpperCase()}`;
 	const videoCode = `yt_${(900000 + index).toString(36).toUpperCase()}`;
 
 	return {
-		...base,
+		...baseWithoutLocationIds,
 		platform: "YouTube",
 		metadata: {
 			channelId: channelCode,
@@ -250,11 +260,21 @@ function buildTiktokRow(
 	base: IndustryBaseRow,
 	index: number,
 ): TikTokIndustryRow {
+	const baseWithoutLocationIds = {
+		id: base.id,
+		namaUsaha: base.namaUsaha,
+		kbliKategori: base.kbliKategori,
+		kecamatanNama: base.kecamatanNama,
+		desaNama: base.desaNama,
+		status: base.status,
+		updatedAt: base.updatedAt,
+		isInsideKaranganyar: base.isInsideKaranganyar,
+	};
 	const authorId = `tt_author_${(50000 + index).toString(36)}`;
 	const videoId = `tt_video_${(700000 + index).toString(36)}`;
 
 	return {
-		...base,
+		...baseWithoutLocationIds,
 		platform: "TikTok",
 		metadata: {
 			authorId,

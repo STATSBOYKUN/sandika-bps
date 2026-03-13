@@ -26,5 +26,15 @@ export async function GET() {
 		)
 		.filter((row) => row !== null);
 
-	return NextResponse.json({ data: rows });
+	const sanitizedRows = rows.map((row) => {
+		if (row.platform === "Google Maps") return row;
+
+		return Object.fromEntries(
+			Object.entries(row).filter(
+				([key]) => key !== "kecamatanNama" && key !== "desaNama",
+			),
+		);
+	});
+
+	return NextResponse.json({ data: sanitizedRows });
 }

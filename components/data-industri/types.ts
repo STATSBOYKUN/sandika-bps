@@ -15,15 +15,33 @@ export type IndustryBaseRow = {
 	id: string;
 	namaUsaha: string;
 	kbliKategori: string;
-	provinsiId: string;
-	kabupatenId: string;
-	kecamatanId: string;
 	kecamatanNama: string;
-	desaId: string;
 	desaNama: string;
 	status: "Aktif" | "Verifikasi" | "Draft";
 	updatedAt: string;
 	isInsideKaranganyar: boolean;
+	provinsiId: string;
+	kabupatenId: string;
+	kecamatanId: string;
+	desaId: string;
+};
+
+export type IndustryNonGoogleBaseRow = {
+	id: string;
+	namaUsaha: string;
+	kbliKategori: string;
+	kecamatanNama: string;
+	desaNama: string;
+	status: "Aktif" | "Verifikasi" | "Draft";
+	updatedAt: string;
+	isInsideKaranganyar: boolean;
+};
+
+export type IndustryLocationIdRow = {
+	provinsiId: string;
+	kabupatenId: string;
+	kecamatanId: string;
+	desaId: string;
 };
 
 export type WilayahMetadata = {
@@ -82,17 +100,18 @@ export type TikTokMetadata = {
 	followerCount: number;
 };
 
-export type GoogleMapsIndustryRow = IndustryBaseRow & {
-	platform: "Google Maps";
-	metadata: GoogleMapsMetadata;
-};
+export type GoogleMapsIndustryRow = IndustryBaseRow &
+	IndustryLocationIdRow & {
+		platform: "Google Maps";
+		metadata: GoogleMapsMetadata;
+	};
 
-export type YouTubeIndustryRow = IndustryBaseRow & {
+export type YouTubeIndustryRow = IndustryNonGoogleBaseRow & {
 	platform: "YouTube";
 	metadata: YouTubeMetadata;
 };
 
-export type TikTokIndustryRow = IndustryBaseRow & {
+export type TikTokIndustryRow = IndustryNonGoogleBaseRow & {
 	platform: "TikTok";
 	metadata: TikTokMetadata;
 };

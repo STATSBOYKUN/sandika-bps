@@ -76,12 +76,12 @@ export type IndustrySeedInput = {
 	platform: "Google Maps" | "YouTube" | "TikTok";
 	namaUsaha: string;
 	kbliKategori: string;
-	provinsiId: string;
-	kabupatenId: string;
-	kecamatanId: string;
-	kecamatanNama: string;
-	desaId: string;
-	desaNama: string;
+	provinsiId?: string;
+	kabupatenId?: string;
+	kecamatanId?: string;
+	kecamatanNama: string | null;
+	desaId?: string;
+	desaNama: string | null;
 	status: "Aktif" | "Verifikasi" | "Draft";
 	isInsideKaranganyar: boolean;
 	metadata: GoogleMapsMetadata | YouTubeMetadata | TikTokMetadata;
@@ -92,12 +92,12 @@ type DbIndustryRecord = {
 	platform: string;
 	namaUsaha: string;
 	kbliKategori: string;
-	provinsiId: string;
-	kabupatenId: string;
-	kecamatanId: string;
-	kecamatanNama: string;
-	desaId: string;
-	desaNama: string;
+	provinsiId: string | null;
+	kabupatenId: string | null;
+	kecamatanId: string | null;
+	kecamatanNama: string | null;
+	desaId: string | null;
+	desaNama: string | null;
 	status: string;
 	isInsideKaranganyar: boolean;
 	metadata: unknown;
@@ -389,11 +389,18 @@ function inferLocationByCoordinate(latitude: number, longitude: number) {
 }
 
 function inferLocationByKecamatanName(kecamatanNama: string) {
+	const found = tryInferLocationByKecamatanName(kecamatanNama);
+	if (!found) return getDefaultLocationFromSpatial();
+
+	return found;
+}
+
+function tryInferLocationByKecamatanName(kecamatanNama: string) {
 	const found = DESA_SPATIAL_RECORDS.find(
 		(item) => normalize(item.kecamatanNama) === normalize(kecamatanNama),
 	);
 
-	if (!found) return getDefaultLocationFromSpatial();
+	if (!found) return null;
 
 	return {
 		provinsiId: found.provinsiId,
@@ -543,24 +550,21 @@ function buildYoutubeSeeds(content: string): IndustrySeedInput[] {
 		if (!channelId) return;
 
 		const channelName = row.channel_name?.trim() || `Channel ${index + 1}`;
-		const location = {
-			...inferLocationByKecamatanName("Karanganyar"),
-			isInsideKaranganyar: true,
-		};
+		const kecamatanName = pickFirst(row, ["Kecamatan", "kecamatan"]);
+		const inferredLocation = kecamatanName
+			? tryInferLocationByKecamatanName(kecamatanName)
+			: null;
+		const isInsideKaranganyar = inferredLocation !== null;
 
 		output.push({
 			sourceKey: `yt:${channelId}`,
 			platform: "YouTube" as const,
 			namaUsaha: channelName,
 			kbliKategori: DEFAULT_KBLI,
-			provinsiId: location.provinsiId,
-			kabupatenId: location.kabupatenId,
-			kecamatanId: location.kecamatanId,
-			kecamatanNama: location.kecamatanNama,
-			desaId: location.desaId,
-			desaNama: location.desaNama,
+			kecamatanNama: inferredLocation?.kecamatanNama ?? null,
+			desaNama: inferredLocation?.desaNama ?? null,
 			status: "Verifikasi" as const,
-			isInsideKaranganyar: location.isInsideKaranganyar,
+			isInsideKaranganyar,
 			metadata: {
 				channelId,
 				channelTitle: channelName,
@@ -624,11 +628,7 @@ function buildTikTokSeeds(content: string): IndustrySeedInput[] {
 			platform: "TikTok" as const,
 			namaUsaha,
 			kbliKategori: DEFAULT_KBLI,
-			provinsiId: location.provinsiId,
-			kabupatenId: location.kabupatenId,
-			kecamatanId: location.kecamatanId,
 			kecamatanNama: location.kecamatanNama,
-			desaId: location.desaId,
 			desaNama: location.desaNama,
 			status: "Verifikasi" as const,
 			isInsideKaranganyar: location.isInsideKaranganyar,
@@ -693,21 +693,36 @@ async function readIfExists(filePath: string) {
 	}
 }
 
+async function readFirstExisting(filePaths: string[]) {
+	for (const filePath of filePaths) {
+		const content = await readIfExists(filePath);
+		if (content !== null) return content;
+	}
+
+	return null;
+}
+
 export async function readIndustrySeedData(baseDir = process.cwd()) {
-	const googlePath = path.join(
-		baseDir,
-		"public",
-		"data",
-		"Google Maps",
-		"Desain Grafis.csv",
-	);
-	const youtubePath = path.join(
-		baseDir,
-		"public",
-		"data",
-		"YouTube",
-		"YouTube Data.csv",
-	);
+	const googlePaths = [
+		path.join(
+			baseDir,
+			"public",
+			"data",
+			"Google Maps",
+			"Google Maps Data.csv",
+		),
+		path.join(
+			baseDir,
+			"public",
+			"data",
+			"Google Maps",
+			"Desain Grafis.csv",
+		),
+	];
+	const youtubePaths = [
+		path.join(baseDir, "public", "data", "YouTube", "Youtube Data.csv"),
+		path.join(baseDir, "public", "data", "YouTube", "YouTube Data.csv"),
+	];
 	const tiktokPath = path.join(
 		baseDir,
 		"public",
@@ -717,8 +732,8 @@ export async function readIndustrySeedData(baseDir = process.cwd()) {
 	);
 
 	const [googleFile, youtubeFile, tiktokFile] = await Promise.all([
-		readIfExists(googlePath),
-		readIfExists(youtubePath),
+		readFirstExisting(googlePaths),
+		readFirstExisting(youtubePaths),
 		readIfExists(tiktokPath),
 	]);
 
@@ -794,12 +809,8 @@ export function mapIndustryRecordToRow(
 		id: record.id,
 		namaUsaha: record.namaUsaha,
 		kbliKategori: record.kbliKategori,
-		provinsiId: record.provinsiId,
-		kabupatenId: record.kabupatenId,
-		kecamatanId: record.kecamatanId,
-		kecamatanNama: record.kecamatanNama,
-		desaId: formatShortDesaId(record.desaId),
-		desaNama: record.desaNama,
+		kecamatanNama: record.kecamatanNama ?? "",
+		desaNama: record.desaNama ?? "",
 		status: (record.status as IndustryRow["status"]) ?? "Verifikasi",
 		updatedAt: record.updatedAt
 			.toISOString()
@@ -807,18 +818,27 @@ export function mapIndustryRecordToRow(
 			.slice(0, 19),
 		isInsideKaranganyar: record.isInsideKaranganyar,
 	};
-	const wilayah = mapWilayahFromMetadataOrBase(metadata, {
-		provinsiId: record.provinsiId,
-		kabupatenId: record.kabupatenId,
-		kecamatanId: record.kecamatanId,
-		kecamatanNama: record.kecamatanNama,
-		desaId: record.desaId,
-		desaNama: record.desaNama,
-	});
 
 	if (record.platform === "Google Maps") {
+		const provinsiId = record.provinsiId ?? "";
+		const kabupatenId = record.kabupatenId ?? "";
+		const kecamatanId = record.kecamatanId ?? "";
+		const desaId = formatShortDesaId(record.desaId ?? "0");
+		const wilayah = mapWilayahFromMetadataOrBase(metadata, {
+			provinsiId,
+			kabupatenId,
+			kecamatanId,
+			kecamatanNama: record.kecamatanNama ?? "",
+			desaId: record.desaId ?? "0",
+			desaNama: record.desaNama ?? "",
+		});
+
 		return {
 			...base,
+			provinsiId,
+			kabupatenId,
+			kecamatanId,
+			desaId,
 			platform: "Google Maps",
 			metadata: {
 				wilayah,

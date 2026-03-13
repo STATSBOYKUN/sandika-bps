@@ -111,6 +111,21 @@ async function main() {
 
 	let upsertedIndustry = 0;
 	for (const row of industrySeed.all) {
+		const locationIds =
+			row.platform === "Google Maps"
+				? {
+						provinsiId: row.provinsiId,
+						kabupatenId: row.kabupatenId,
+						kecamatanId: row.kecamatanId,
+						desaId: row.desaId,
+					}
+				: {
+						provinsiId: null,
+						kabupatenId: null,
+						kecamatanId: null,
+						desaId: null,
+					};
+
 		await industryClient.upsert({
 			where: { sourceKey: row.sourceKey },
 			create: {
@@ -118,11 +133,11 @@ async function main() {
 				platform: row.platform,
 				namaUsaha: row.namaUsaha,
 				kbliKategori: row.kbliKategori,
-				provinsiId: row.provinsiId,
-				kabupatenId: row.kabupatenId,
-				kecamatanId: row.kecamatanId,
+				provinsiId: locationIds.provinsiId,
+				kabupatenId: locationIds.kabupatenId,
+				kecamatanId: locationIds.kecamatanId,
 				kecamatanNama: row.kecamatanNama,
-				desaId: row.desaId,
+				desaId: locationIds.desaId,
 				desaNama: row.desaNama,
 				status: row.status,
 				isInsideKaranganyar: row.isInsideKaranganyar,
@@ -132,11 +147,11 @@ async function main() {
 				platform: row.platform,
 				namaUsaha: row.namaUsaha,
 				kbliKategori: row.kbliKategori,
-				provinsiId: row.provinsiId,
-				kabupatenId: row.kabupatenId,
-				kecamatanId: row.kecamatanId,
+				provinsiId: locationIds.provinsiId,
+				kabupatenId: locationIds.kabupatenId,
+				kecamatanId: locationIds.kecamatanId,
 				kecamatanNama: row.kecamatanNama,
-				desaId: row.desaId,
+				desaId: locationIds.desaId,
 				desaNama: row.desaNama,
 				status: row.status,
 				isInsideKaranganyar: row.isInsideKaranganyar,

@@ -101,7 +101,7 @@ export default function HelpTicketingPage() {
 		}
 	};
 
-	const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+	const onSubmit: React.FormEventHandler<HTMLFormElement> = async (event) => {
 		event.preventDefault();
 		setHasSubmitted(true);
 

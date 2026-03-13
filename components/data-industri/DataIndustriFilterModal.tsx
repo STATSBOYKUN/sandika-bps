@@ -16,6 +16,7 @@ interface DataIndustriFilterModalProps {
 	desaOptions: string[];
 	selectedKecamatan: string;
 	selectedDesa: string;
+	showRegionFilters: boolean;
 	totalShown: number;
 	onToggleKbli: (value: string) => void;
 	onChangeKecamatan: (value: string) => void;
@@ -35,6 +36,7 @@ export default function DataIndustriFilterModal({
 	desaOptions,
 	selectedKecamatan,
 	selectedDesa,
+	showRegionFilters,
 	totalShown,
 	onToggleKbli,
 	onChangeKecamatan,
@@ -79,14 +81,18 @@ export default function DataIndustriFilterModal({
 						<span className="badge badge-primary">
 							KBLI: {selectedKbli.length}
 						</span>
-						<span className="badge badge-info gap-1.5">
-							<Landmark className="h-3.5 w-3.5" />
-							{selectedKecamatan}
-						</span>
-						<span className="badge badge-secondary gap-1.5">
-							<Building2 className="h-3.5 w-3.5" />
-							{selectedDesa}
-						</span>
+						{showRegionFilters ? (
+							<>
+								<span className="badge badge-info gap-1.5">
+									<Landmark className="h-3.5 w-3.5" />
+									{selectedKecamatan}
+								</span>
+								<span className="badge badge-secondary gap-1.5">
+									<Building2 className="h-3.5 w-3.5" />
+									{selectedDesa}
+								</span>
+							</>
+						) : null}
 						<span className="badge badge-success gap-1.5">
 							<MapPinned className="h-3.5 w-3.5" />
 							{totalShown.toLocaleString("id-ID")} data
@@ -95,60 +101,70 @@ export default function DataIndustriFilterModal({
 				</div>
 
 				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:py-5">
-					<div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[1.05fr_1fr]">
-						<div className="border-base-300 bg-base-100 space-y-4 rounded-2xl border p-3 sm:p-4">
-							<div>
-								<h4 className="text-sm font-semibold">
-									Wilayah Administratif
-								</h4>
-								<p className="text-base-content/60 mt-1 text-xs">
-									Pilih kecamatan dan desa untuk mempersempit
-									cakupan data industri.
-								</p>
-							</div>
+					<div
+						className={`grid grid-cols-1 gap-3 sm:gap-4 ${showRegionFilters ? "lg:grid-cols-[1.05fr_1fr]" : ""}`}
+					>
+						{showRegionFilters ? (
+							<div className="border-base-300 bg-base-100 space-y-4 rounded-2xl border p-3 sm:p-4">
+								<div>
+									<h4 className="text-sm font-semibold">
+										Wilayah Administratif
+									</h4>
+									<p className="text-base-content/60 mt-1 text-xs">
+										Pilih kecamatan dan desa untuk
+										mempersempit cakupan data industri.
+									</p>
+								</div>
 
-							<div className="grid grid-cols-1 gap-3">
-								<label className="form-control">
-									<span className="label-text text-base-content/70 mb-1 text-xs">
-										Filter Kecamatan
-									</span>
-									<select
-										className="select select-bordered select-sm w-full"
-										value={selectedKecamatan}
-										onChange={(event) =>
-											onChangeKecamatan(
-												event.target.value,
-											)
-										}
-									>
-										{kecamatanOptions.map((option) => (
-											<option key={option} value={option}>
-												{option}
-											</option>
-										))}
-									</select>
-								</label>
+								<div className="grid grid-cols-1 gap-3">
+									<label className="form-control">
+										<span className="label-text text-base-content/70 mb-1 text-xs">
+											Filter Kecamatan
+										</span>
+										<select
+											className="select select-bordered select-sm w-full"
+											value={selectedKecamatan}
+											onChange={(event) =>
+												onChangeKecamatan(
+													event.target.value,
+												)
+											}
+										>
+											{kecamatanOptions.map((option) => (
+												<option
+													key={option}
+													value={option}
+												>
+													{option}
+												</option>
+											))}
+										</select>
+									</label>
 
-								<label className="form-control">
-									<span className="label-text text-base-content/70 mb-1 text-xs">
-										Filter Desa
-									</span>
-									<select
-										className="select select-bordered select-sm w-full"
-										value={selectedDesa}
-										onChange={(event) =>
-											onChangeDesa(event.target.value)
-										}
-									>
-										{desaOptions.map((option) => (
-											<option key={option} value={option}>
-												{option}
-											</option>
-										))}
-									</select>
-								</label>
+									<label className="form-control">
+										<span className="label-text text-base-content/70 mb-1 text-xs">
+											Filter Desa
+										</span>
+										<select
+											className="select select-bordered select-sm w-full"
+											value={selectedDesa}
+											onChange={(event) =>
+												onChangeDesa(event.target.value)
+											}
+										>
+											{desaOptions.map((option) => (
+												<option
+													key={option}
+													value={option}
+												>
+													{option}
+												</option>
+											))}
+										</select>
+									</label>
+								</div>
 							</div>
-						</div>
+						) : null}
 
 						<div className="border-base-300 bg-base-100 rounded-2xl border p-3 sm:p-4">
 							<div className="mb-3 flex items-center justify-between gap-2">

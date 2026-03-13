@@ -38,10 +38,15 @@ import PageState from "@/components/layout/PageState";
 const ALL_KECAMATAN = "Semua";
 const ALL_DESA = "Semua";
 
-function sortUnique(values: string[]) {
-	return Array.from(new Set(values)).sort((a, b) =>
-		a.localeCompare(b, "id-ID"),
-	);
+function sortUnique(values: Array<string | undefined>) {
+	return Array.from(
+		new Set(
+			values.filter(
+				(value): value is string =>
+					typeof value === "string" && value.trim().length > 0,
+			),
+		),
+	).sort((a, b) => a.localeCompare(b, "id-ID"));
 }
 
 function buildDesaOptions(rows: IndustryRow[], kecamatan: string) {
@@ -96,6 +101,7 @@ export default function DataIndustriPage() {
 		() => getTabConfigByKey(activeTab),
 		[activeTab],
 	);
+	const isGoogleMapsTab = activeTabConfig.platform === "Google Maps";
 	const platformRows = useMemo(() => {
 		return rowsState.filter((row) => {
 			const matchesPlatform = row.platform === activeTabConfig.platform;
@@ -104,22 +110,35 @@ export default function DataIndustriPage() {
 	}, [rowsState, activeTabConfig]);
 
 	const kecamatanOptions = useMemo(
-		() => [
-			ALL_KECAMATAN,
-			...sortUnique(platformRows.map((row) => row.kecamatanNama)),
-		],
-		[platformRows],
+		() =>
+			isGoogleMapsTab
+				? [
+						ALL_KECAMATAN,
+						...sortUnique(
+							platformRows.map((row) => row.kecamatanNama),
+						),
+					]
+				: [ALL_KECAMATAN],
+		[isGoogleMapsTab, platformRows],
 	);
 	const desaOptions = useMemo(
-		() => buildDesaOptions(platformRows, selectedKecamatan),
-		[platformRows, selectedKecamatan],
+		() =>
+			isGoogleMapsTab
+				? buildDesaOptions(platformRows, selectedKecamatan)
+				: [ALL_DESA],
+		[isGoogleMapsTab, platformRows, selectedKecamatan],
 	);
 	const tempDesaOptions = useMemo(
-		() => buildDesaOptions(platformRows, tempKecamatan),
-		[platformRows, tempKecamatan],
+		() =>
+			isGoogleMapsTab
+				? buildDesaOptions(platformRows, tempKecamatan)
+				: [ALL_DESA],
+		[isGoogleMapsTab, platformRows, tempKecamatan],
 	);
 
 	const data = useMemo(() => {
+		if (!isGoogleMapsTab) return platformRows;
+
 		return platformRows.filter((row) => {
 			const matchesKecamatan =
 				selectedKecamatan === ALL_KECAMATAN ||
@@ -128,7 +147,7 @@ export default function DataIndustriPage() {
 				selectedDesa === ALL_DESA || row.desaNama === selectedDesa;
 			return matchesKecamatan && matchesDesa;
 		});
-	}, [platformRows, selectedKecamatan, selectedDesa]);
+	}, [isGoogleMapsTab, platformRows, selectedKecamatan, selectedDesa]);
 
 	const columns = useMemo(() => activeTabConfig.columns, [activeTabConfig]);
 
@@ -320,6 +339,7 @@ export default function DataIndustriPage() {
 				searchInput={searchInput}
 				selectedKecamatan={selectedKecamatan}
 				selectedDesa={selectedDesa}
+				showRegionFilters={isGoogleMapsTab}
 				onSearchChange={setSearchInput}
 				onOpenFilter={openFilterModal}
 			/>
@@ -413,6 +433,7 @@ export default function DataIndustriPage() {
 				desaOptions={tempDesaOptions}
 				selectedKecamatan={tempKecamatan}
 				selectedDesa={tempDesa}
+				showRegionFilters={isGoogleMapsTab}
 				totalShown={filteredCount}
 				onToggleKbli={toggleKbli}
 				onChangeKecamatan={(value) => {

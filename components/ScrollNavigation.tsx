@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { UserIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,8 +19,7 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
 	const router = useRouter();
 	const { showAlert } = useTimedAlert();
 	const { data: session } = authClient.useSession();
-	const [isMounted, setIsMounted] = React.useState(false);
-	const [isAtTop, setIsAtTop] = React.useState(true);
+	const [isAtTop, setIsAtTop] = useState(true);
 	const sectionHeaders: Record<number, string> = {
 		0: "Utama",
 		2: "Modul",
@@ -33,23 +32,15 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
 		return pathname === href || pathname.startsWith(`${href}/`);
 	};
 
-	React.useEffect(() => {
-		setIsMounted(true);
-	}, []);
-
-	React.useEffect(() => {
+	useEffect(() => {
 		if (typeof window === "undefined") return;
 		const handleScroll = () => setIsAtTop(window.scrollY === 0);
 		window.addEventListener("scroll", handleScroll);
 		return () => window.removeEventListener("scroll", handleScroll);
 	}, []);
 
-	const displayName = isMounted
-		? session?.user.name?.trim() || "Pengguna"
-		: "Pengguna";
-	const avatarInitial = isMounted
-		? displayName.charAt(0).toUpperCase() || "P"
-		: "P";
+	const displayName = session?.user.name?.trim() || "Pengguna";
+	const avatarInitial = displayName.charAt(0).toUpperCase() || "P";
 
 	const handleLogout = async () => {
 		const { error } = await authClient.signOut();

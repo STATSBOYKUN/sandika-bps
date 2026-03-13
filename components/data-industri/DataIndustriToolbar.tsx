@@ -11,6 +11,7 @@ interface DataIndustriToolbarProps {
 	totalKbliOptions: number;
 	selectedKecamatan: string;
 	selectedDesa: string;
+	showRegionFilters: boolean;
 	anomalyCount: number;
 	searchInput: string;
 	onSearchChange: (value: string) => void;
@@ -22,6 +23,7 @@ export default function DataIndustriToolbar({
 	totalKbliOptions,
 	selectedKecamatan,
 	selectedDesa,
+	showRegionFilters,
 	anomalyCount,
 	searchInput,
 	onSearchChange,
@@ -32,6 +34,10 @@ export default function DataIndustriToolbar({
 			? "Semua KBLI"
 			: `${selectedKbli.length} KBLI dipilih`;
 
+	const searchPlaceholder = showRegionFilters
+		? "Cari nama, id, kecamatan"
+		: "Cari nama, id, channel, video";
+
 	return (
 		<section className="border-base-300 bg-base-200/50 rounded-xl border p-3 sm:p-4">
 			<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -41,14 +47,18 @@ export default function DataIndustriToolbar({
 					</span>
 
 					<span className="badge badge-primary">{kbliLabel}</span>
-					<span className="badge badge-info gap-1.5">
-						<Landmark className="h-3.5 w-3.5" />
-						{selectedKecamatan}
-					</span>
-					<span className="badge badge-secondary gap-1.5">
-						<Building2 className="h-3.5 w-3.5" />
-						{selectedDesa}
-					</span>
+					{showRegionFilters ? (
+						<>
+							<span className="badge badge-info gap-1.5">
+								<Landmark className="h-3.5 w-3.5" />
+								{selectedKecamatan}
+							</span>
+							<span className="badge badge-secondary gap-1.5">
+								<Building2 className="h-3.5 w-3.5" />
+								{selectedDesa}
+							</span>
+						</>
+					) : null}
 					<div
 						className="tooltip tooltip-bottom"
 						data-tip="Daerah yang diluar wilayah"
@@ -68,7 +78,7 @@ export default function DataIndustriToolbar({
 							onChange={(event) =>
 								onSearchChange(event.target.value)
 							}
-							placeholder="Cari nama, id, kecamatan"
+							placeholder={searchPlaceholder}
 						/>
 					</label>
 					<button

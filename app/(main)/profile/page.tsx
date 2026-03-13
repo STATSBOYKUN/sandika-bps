@@ -19,6 +19,7 @@ import {
 import { PageSkeletonContent } from "@/components/layout/PageSkeleton";
 import PageHeader from "@/components/layout/PageHeader";
 import PageShell from "@/components/layout/PageShell";
+import PageState from "@/components/layout/PageState";
 import { useTimedAlert } from "@/contexts/TimedAlertContext";
 import { authClient } from "@/lib/auth-client";
 
@@ -31,6 +32,15 @@ type UserProfile = {
 	location: string;
 	bio: string;
 	lastLogin: string;
+};
+
+type ActivityIconKey = "account" | "industry";
+
+type ProfileActivity = {
+	id: string;
+	label: string;
+	timestamp: string;
+	iconKey: ActivityIconKey;
 };
 
 const PROFILE_STORAGE_KEY = "userProfile";
@@ -82,6 +92,39 @@ function formatDateTime(value: string) {
 	});
 }
 
+function parseDate(value: string) {
+	const parsed = new Date(value);
+	if (!Number.isNaN(parsed.getTime())) return parsed;
+
+	const fallback = new Date(value.replace(" ", "T"));
+	if (!Number.isNaN(fallback.getTime())) return fallback;
+
+	return null;
+}
+
+function formatRelativeTime(value: string) {
+	const date = parseDate(value);
+	if (!date) return "Waktu tidak diketahui";
+
+	const deltaMs = Date.now() - date.getTime();
+	if (!Number.isFinite(deltaMs) || deltaMs < 0) return "Baru saja";
+
+	const minutes = Math.floor(deltaMs / 60000);
+	if (minutes < 1) return "Baru saja";
+	if (minutes < 60) return `${minutes} menit lalu`;
+
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours} jam lalu`;
+
+	const days = Math.floor(hours / 24);
+	return `${days} hari lalu`;
+}
+
+function getActivityIcon(iconKey: ActivityIconKey) {
+	if (iconKey === "industry") return Briefcase;
+	return ShieldCheck;
+}
+
 export default function ProfilePage() {
 	const router = useRouter();
 	const { showAlert } = useTimedAlert();
@@ -93,12 +136,61 @@ export default function ProfilePage() {
 		() => readStoredProfile() ?? buildDefaultProfile(),
 	);
 	const [isEditing, setIsEditing] = useState(false);
+	const [recentActivities, setRecentActivities] = useState<ProfileActivity[]>(
+		[],
+	);
+	const [isActivitiesLoading, setIsActivitiesLoading] = useState(true);
+	const [activitiesError, setActivitiesError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!isPending && !session) {
 			router.replace("/login");
 		}
 	}, [isPending, router, session]);
+
+	useEffect(() => {
+		if (isPending || !session) return;
+
+		const controller = new AbortController();
+		let mounted = true;
+
+		setIsActivitiesLoading(true);
+		setActivitiesError(null);
+
+		const loadActivities = async () => {
+			try {
+				const response = await fetch("/api/profile/activities", {
+					signal: controller.signal,
+				});
+
+				if (!response.ok) {
+					throw new Error("Gagal memuat aktivitas terbaru.");
+				}
+
+				const payload = (await response.json()) as {
+					data?: ProfileActivity[];
+				};
+				const next = Array.isArray(payload.data) ? payload.data : [];
+
+				if (!mounted) return;
+				setRecentActivities(next);
+			} catch {
+				if (!mounted || controller.signal.aborted) return;
+				setActivitiesError("Aktivitas belum bisa ditampilkan.");
+				setRecentActivities([]);
+			} finally {
+				if (!mounted) return;
+				setIsActivitiesLoading(false);
+			}
+		};
+
+		void loadActivities();
+
+		return () => {
+			mounted = false;
+			controller.abort();
+		};
+	}, [isPending, session]);
 
 	const sessionFullName = session?.user.name?.trim() || "Pengguna";
 	const sessionEmail = session?.user.email?.trim() || "-";
@@ -129,24 +221,6 @@ export default function ProfilePage() {
 			</PageShell>
 		);
 	}
-
-	const recentActivities = [
-		{
-			label: "Memperbarui preferensi akun",
-			when: "Hari ini",
-			icon: Edit3,
-		},
-		{
-			label: "Membuka modul Data Industri",
-			when: "Kemarin",
-			icon: Briefcase,
-		},
-		{
-			label: "Meninjau peta industri wilayah",
-			when: "2 hari lalu",
-			icon: MapPin,
-		},
-	];
 
 	const startEdit = () => {
 		setDraft(profileView);
@@ -240,8 +314,8 @@ export default function ProfilePage() {
 				<article className="border-base-300 bg-base-200/50 rounded-xl border p-5 xl:col-span-1">
 					<div className="flex items-start gap-4">
 						<div className="avatar placeholder">
-							<div className="bg-primary/15 text-primary h-16 w-16 rounded-xl">
-								<span className="text-lg font-semibold">
+							<div className="bg-primary/15 text-primary flex h-16 w-16 items-center justify-center rounded-xl">
+								<span className="text-lg font-bold">
 									{profileView.fullName.charAt(0)}
 								</span>
 							</div>
@@ -436,26 +510,57 @@ export default function ProfilePage() {
 				<h2 className="mb-4 text-xl font-semibold">
 					Aktivitas Terbaru
 				</h2>
-				<ul className="space-y-3">
-					{recentActivities.map((activity) => {
-						const Icon = activity.icon;
-						return (
+				{isActivitiesLoading ? (
+					<ul className="space-y-3">
+						{Array.from({ length: 3 }).map((_, index) => (
 							<li
-								key={activity.label}
+								key={`activity-skeleton-${index}`}
 								className="border-base-300 bg-base-100 flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
 							>
 								<div className="flex items-center gap-2">
-									<Icon className="text-primary h-4 w-4" />
-									<span>{activity.label}</span>
+									<div className="skeleton h-4 w-4 rounded" />
+									<div className="skeleton h-4 w-56 rounded" />
 								</div>
-								<span className="text-base-content/60 inline-flex items-center gap-1">
-									<Clock3 className="h-3.5 w-3.5" />
-									{activity.when}
-								</span>
+								<div className="skeleton h-3 w-20 rounded" />
 							</li>
-						);
-					})}
-				</ul>
+						))}
+					</ul>
+				) : activitiesError ? (
+					<PageState
+						variant="error"
+						title="Aktivitas belum bisa ditampilkan"
+						description={activitiesError}
+						className="grid min-h-[180px] place-content-center"
+					/>
+				) : recentActivities.length === 0 ? (
+					<PageState
+						variant="empty"
+						title="Belum ada aktivitas"
+						description="Aktivitas akan muncul setelah ada login atau perubahan data industri."
+						className="grid min-h-[180px] place-content-center"
+					/>
+				) : (
+					<ul className="space-y-3">
+						{recentActivities.map((activity) => {
+							const Icon = getActivityIcon(activity.iconKey);
+							return (
+								<li
+									key={activity.id}
+									className="border-base-300 bg-base-100 flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
+								>
+									<div className="flex items-center gap-2">
+										<Icon className="text-primary h-4 w-4" />
+										<span>{activity.label}</span>
+									</div>
+									<span className="text-base-content/60 inline-flex items-center gap-1">
+										<Clock3 className="h-3.5 w-3.5" />
+										{formatRelativeTime(activity.timestamp)}
+									</span>
+								</li>
+							);
+						})}
+					</ul>
+				)}
 			</section>
 		</PageShell>
 	);

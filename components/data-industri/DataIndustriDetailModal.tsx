@@ -66,6 +66,19 @@ function buildGoogleMapsDirectionUrl(latitude: number, longitude: number) {
 	return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
 }
 
+function isValidYouTubeChannelId(channelId: string) {
+	return /^UC[a-zA-Z0-9_-]{22}$/.test(channelId);
+}
+
+function buildYouTubeChannelUploadsEmbedUrl(channelId: string) {
+	const uploadsPlaylistId = `UU${channelId.slice(2)}`;
+	return `https://www.youtube.com/embed/videoseries?list=${uploadsPlaylistId}`;
+}
+
+function buildYouTubeChannelUrl(channelId: string) {
+	return `https://www.youtube.com/channel/${channelId}`;
+}
+
 function metadataFields(row: IndustryRow): Array<[string, string]> {
 	if (row.platform === "Google Maps") {
 		const wilayahFields: Array<[string, string]> = [
@@ -178,6 +191,19 @@ function DataIndustriDetailModalContent({
 				draft.metadata.longitude,
 			)
 		: "";
+	const isGoogleMaps = draft.platform === "Google Maps";
+	const isYouTube = draft.platform === "YouTube";
+	const googleDraft = draft.platform === "Google Maps" ? draft : null;
+	const youtubeDraft = draft.platform === "YouTube" ? draft : null;
+	const hasYouTubeChannelPreview =
+		isYouTube && isValidYouTubeChannelId(draft.metadata.channelId);
+	const youtubePreviewUrl = hasYouTubeChannelPreview
+		? buildYouTubeChannelUploadsEmbedUrl(draft.metadata.channelId)
+		: "";
+	const youtubeChannelUrl = youtubeDraft
+		? cleanString(youtubeDraft.metadata.videoUrl) ||
+			buildYouTubeChannelUrl(youtubeDraft.metadata.channelId)
+		: "";
 
 	const readOnlyFields = [
 		["ID", draft.id],
@@ -185,28 +211,44 @@ function DataIndustriDetailModalContent({
 		["Updated At", draft.updatedAt],
 	] as const;
 
-	const fields = [
-		["Nama Usaha", draft.namaUsaha],
-		["KBLI", draft.kbliKategori],
-		["Provinsi ID", draft.provinsiId],
-		["Kabupaten ID", draft.kabupatenId],
-		["Kecamatan ID", draft.kecamatanId],
-		["Kecamatan", draft.kecamatanNama],
-		["Desa ID", draft.desaId],
-		["Desa", draft.desaNama],
-	] as const;
+	const fields = isGoogleMaps
+		? ([
+				["Nama Usaha", draft.namaUsaha],
+				["KBLI", draft.kbliKategori],
+				["Kecamatan", draft.kecamatanNama],
+				["Desa", draft.desaNama],
+			] as const)
+		: ([
+				["Nama Usaha", draft.namaUsaha],
+				["KBLI", draft.kbliKategori],
+			] as const);
+
+	const googleLocationFields =
+		draft.platform === "Google Maps"
+			? ([
+					["Provinsi ID", draft.provinsiId],
+					["Kabupaten ID", draft.kabupatenId],
+					["Kecamatan ID", draft.kecamatanId],
+					["Desa ID", draft.desaId],
+				] as const)
+			: [];
 
 	const validate = () => {
 		const requiredStrings: Array<[string, string]> = [
 			["Nama Usaha", draft.namaUsaha],
 			["KBLI", draft.kbliKategori],
-			["Provinsi ID", draft.provinsiId],
-			["Kabupaten ID", draft.kabupatenId],
-			["Kecamatan ID", draft.kecamatanId],
-			["Kecamatan", draft.kecamatanNama],
-			["Desa ID", draft.desaId],
-			["Desa", draft.desaNama],
 		];
+
+		if (isGoogleMaps) {
+			requiredStrings.push(
+				["Kecamatan", draft.kecamatanNama],
+				["Desa", draft.desaNama],
+				["Provinsi ID", draft.provinsiId],
+				["Kabupaten ID", draft.kabupatenId],
+				["Kecamatan ID", draft.kecamatanId],
+				["Desa ID", draft.desaId],
+			);
+		}
 
 		for (const [label, value] of requiredStrings) {
 			if (!cleanString(value)) {
@@ -215,7 +257,7 @@ function DataIndustriDetailModalContent({
 			}
 		}
 
-		if (draft.platform === "Google Maps") {
+		if (isGoogleMaps) {
 			if (
 				!Number.isFinite(draft.metadata.latitude) ||
 				draft.metadata.latitude < -90 ||
@@ -247,18 +289,27 @@ function DataIndustriDetailModalContent({
 		if (!onSave) return;
 		if (!validate()) return;
 
-		onSave({
-			...draft,
-			namaUsaha: cleanString(draft.namaUsaha),
-			kbliKategori: cleanString(draft.kbliKategori),
-			provinsiId: cleanString(draft.provinsiId),
-			kabupatenId: cleanString(draft.kabupatenId),
-			kecamatanId: cleanString(draft.kecamatanId),
-			kecamatanNama: cleanString(draft.kecamatanNama),
-			desaId: cleanString(draft.desaId),
-			desaNama: cleanString(draft.desaNama),
-			updatedAt: nowTimestamp(),
-		});
+		if (draft.platform === "Google Maps") {
+			onSave({
+				...draft,
+				namaUsaha: cleanString(draft.namaUsaha),
+				kbliKategori: cleanString(draft.kbliKategori),
+				kecamatanNama: cleanString(draft.kecamatanNama),
+				desaNama: cleanString(draft.desaNama),
+				provinsiId: cleanString(draft.provinsiId),
+				kabupatenId: cleanString(draft.kabupatenId),
+				kecamatanId: cleanString(draft.kecamatanId),
+				desaId: cleanString(draft.desaId),
+				updatedAt: nowTimestamp(),
+			});
+		} else {
+			onSave({
+				...draft,
+				namaUsaha: cleanString(draft.namaUsaha),
+				kbliKategori: cleanString(draft.kbliKategori),
+				updatedAt: nowTimestamp(),
+			});
+		}
 
 		setIsEditing(false);
 	};
@@ -393,101 +444,138 @@ function DataIndustriDetailModalContent({
 								</select>
 							</label>
 
-							<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-								<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
-									Provinsi ID
-								</span>
-								<input
-									className="input input-bordered input-sm w-full flex-1"
-									value={draft.provinsiId}
-									onChange={(event) =>
-										setDraft((prev) => ({
-											...prev,
-											provinsiId: event.target.value,
-										}))
-									}
-								/>
-							</label>
+							{isGoogleMaps ? (
+								<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+									<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
+										Kecamatan
+									</span>
+									<input
+										className="input input-bordered input-sm w-full flex-1"
+										value={draft.kecamatanNama}
+										onChange={(event) =>
+											setDraft((prev) => ({
+												...prev,
+												kecamatanNama:
+													event.target.value,
+											}))
+										}
+									/>
+								</label>
+							) : null}
 
-							<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-								<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
-									Kabupaten ID
-								</span>
-								<input
-									className="input input-bordered input-sm w-full flex-1"
-									value={draft.kabupatenId}
-									onChange={(event) =>
-										setDraft((prev) => ({
-											...prev,
-											kabupatenId: event.target.value,
-										}))
-									}
-								/>
-							</label>
+							{googleDraft ? (
+								<>
+									<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+										<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
+											Provinsi ID
+										</span>
+										<input
+											className="input input-bordered input-sm w-full flex-1"
+											value={googleDraft.provinsiId}
+											onChange={(event) =>
+												setDraft((prev) =>
+													prev.platform ===
+													"Google Maps"
+														? {
+																...prev,
+																provinsiId:
+																	event.target
+																		.value,
+															}
+														: prev,
+												)
+											}
+										/>
+									</label>
 
-							<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-								<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
-									Kec. ID
-								</span>
-								<input
-									className="input input-bordered input-sm w-full flex-1"
-									value={draft.kecamatanId}
-									onChange={(event) =>
-										setDraft((prev) => ({
-											...prev,
-											kecamatanId: event.target.value,
-										}))
-									}
-								/>
-							</label>
+									<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+										<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
+											Kabupaten ID
+										</span>
+										<input
+											className="input input-bordered input-sm w-full flex-1"
+											value={googleDraft.kabupatenId}
+											onChange={(event) =>
+												setDraft((prev) =>
+													prev.platform ===
+													"Google Maps"
+														? {
+																...prev,
+																kabupatenId:
+																	event.target
+																		.value,
+															}
+														: prev,
+												)
+											}
+										/>
+									</label>
 
-							<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-								<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
-									Kecamatan
-								</span>
-								<input
-									className="input input-bordered input-sm w-full flex-1"
-									value={draft.kecamatanNama}
-									onChange={(event) =>
-										setDraft((prev) => ({
-											...prev,
-											kecamatanNama: event.target.value,
-										}))
-									}
-								/>
-							</label>
+									<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+										<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
+											Kec. ID
+										</span>
+										<input
+											className="input input-bordered input-sm w-full flex-1"
+											value={googleDraft.kecamatanId}
+											onChange={(event) =>
+												setDraft((prev) =>
+													prev.platform ===
+													"Google Maps"
+														? {
+																...prev,
+																kecamatanId:
+																	event.target
+																		.value,
+															}
+														: prev,
+												)
+											}
+										/>
+									</label>
 
-							<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-								<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
-									Desa ID
-								</span>
-								<input
-									className="input input-bordered input-sm w-full flex-1"
-									value={draft.desaId}
-									onChange={(event) =>
-										setDraft((prev) => ({
-											...prev,
-											desaId: event.target.value,
-										}))
-									}
-								/>
-							</label>
+									<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+										<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
+											Desa ID
+										</span>
+										<input
+											className="input input-bordered input-sm w-full flex-1"
+											value={googleDraft.desaId}
+											onChange={(event) =>
+												setDraft((prev) =>
+													prev.platform ===
+													"Google Maps"
+														? {
+																...prev,
+																desaId: event
+																	.target
+																	.value,
+															}
+														: prev,
+												)
+											}
+										/>
+									</label>
+								</>
+							) : null}
 
-							<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-								<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
-									Desa
-								</span>
-								<input
-									className="input input-bordered input-sm w-full flex-1"
-									value={draft.desaNama}
-									onChange={(event) =>
-										setDraft((prev) => ({
-											...prev,
-											desaNama: event.target.value,
-										}))
-									}
-								/>
-							</label>
+							{isGoogleMaps ? (
+								<label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+									<span className="label-text text-base-content/70 text-xs sm:w-24 sm:flex-shrink-0">
+										Desa
+									</span>
+									<input
+										className="input input-bordered input-sm w-full flex-1"
+										value={draft.desaNama}
+										onChange={(event) =>
+											setDraft((prev) => ({
+												...prev,
+												desaNama: event.target.value,
+											}))
+										}
+									/>
+								</label>
+							) : null}
 
 							{draft.platform === "Google Maps" ? (
 								<>
@@ -557,19 +645,21 @@ function DataIndustriDetailModalContent({
 						</div>
 					) : (
 						<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-							{fields.map(([label, value]) => (
-								<div
-									key={label}
-									className="border-base-300 bg-base-100 rounded-xl border px-3 py-2.5"
-								>
-									<div className="text-base-content/60 text-xs">
-										{label}
+							{[...fields, ...googleLocationFields].map(
+								([label, value]) => (
+									<div
+										key={label}
+										className="border-base-300 bg-base-100 rounded-xl border px-3 py-2.5"
+									>
+										<div className="text-base-content/60 text-xs">
+											{label}
+										</div>
+										<div className="mt-1 text-sm font-medium break-all">
+											{value}
+										</div>
 									</div>
-									<div className="mt-1 text-sm font-medium break-all">
-										{value}
-									</div>
-								</div>
-							))}
+								),
+							)}
 						</div>
 					)}
 
@@ -599,7 +689,7 @@ function DataIndustriDetailModalContent({
 							<div className="flex items-center gap-2">
 								<MapPin className="text-error h-4 w-4" />
 								<span className="text-base-content/60 text-xs font-semibold tracking-wide uppercase">
-									Map Preview
+									Preview
 								</span>
 							</div>
 
@@ -614,6 +704,20 @@ function DataIndustriDetailModalContent({
 									>
 										<Navigation className="h-3.5 w-3.5" />
 										Menuju Lokasi
+									</a>
+								</div>
+							) : null}
+
+							{draft.platform === "YouTube" &&
+							youtubeChannelUrl ? (
+								<div className="flex flex-wrap items-center gap-2">
+									<a
+										className="btn btn-xs btn-primary"
+										href={youtubeChannelUrl}
+										target="_blank"
+										rel="noreferrer"
+									>
+										Buka Channel
 									</a>
 								</div>
 							) : null}
@@ -640,11 +744,32 @@ function DataIndustriDetailModalContent({
 									</span>
 								</div>
 							)
+						) : draft.platform === "YouTube" ? (
+							hasYouTubeChannelPreview ? (
+								<div className="space-y-2">
+									<div className="border-base-300 overflow-hidden rounded-lg border">
+										<iframe
+											title={`YouTube channel preview ${draft.namaUsaha}`}
+											src={youtubePreviewUrl}
+											className="h-48 w-full sm:h-56 md:h-64"
+											loading="lazy"
+											allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+											allowFullScreen
+										/>
+									</div>
+								</div>
+							) : (
+								<div className="alert alert-warning py-2 text-sm">
+									<span>
+										Channel ID tidak valid, preview YouTube
+										tidak dapat ditampilkan.
+									</span>
+								</div>
+							)
 						) : (
 							<div className="alert bg-base-200/50 border-base-300 border py-2 text-sm">
 								<span>
-									Map preview hanya tersedia untuk data
-									platform Google Maps.
+									Preview belum tersedia untuk platform ini.
 								</span>
 							</div>
 						)}

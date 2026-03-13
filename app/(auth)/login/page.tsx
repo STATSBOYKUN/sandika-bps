@@ -43,7 +43,7 @@ export default function LoginPage() {
 		}
 	}, [isPending, router, session]);
 
-	const handleLogin = async (e: React.FormEvent) => {
+	const handleLogin: React.FormEventHandler<HTMLFormElement> = async (e) => {
 		e.preventDefault();
 		const hasIdentifier = Boolean(identifier.trim());
 		const hasPassword = Boolean(password.trim());
@@ -65,7 +65,7 @@ export default function LoginPage() {
 		const { error: signInError } = await authClient.signIn.username({
 			username: identifier.trim(),
 			password,
-			callbackURL: "/profile",
+			callbackURL: "/",
 		});
 
 		if (signInError) {
@@ -80,7 +80,7 @@ export default function LoginPage() {
 
 		setIsSubmitting(false);
 		if (!signInError) {
-			router.push("/profile");
+			router.push("/");
 		}
 	};
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
 		setIsGoogleSubmitting(true);
 		const { error: socialError } = await authClient.signIn.social({
 			provider: "google",
-			callbackURL: "/profile",
+			callbackURL: "/",
 		});
 
 		if (socialError) {

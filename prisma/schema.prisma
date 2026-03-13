@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -80,12 +79,12 @@ model IndustryRecord {
   platform          String
   namaUsaha         String
   kbliKategori      String
-  provinsiId        String
-  kabupatenId       String
-  kecamatanId       String
-  kecamatanNama     String
-  desaId            String
-  desaNama          String
+  provinsiId        String?
+  kabupatenId       String?
+  kecamatanId       String?
+  kecamatanNama     String?
+  desaId            String?
+  desaNama          String?
   status            String
   isInsideKaranganyar Boolean
   metadata          Json

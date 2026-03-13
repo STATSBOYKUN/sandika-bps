@@ -22,49 +22,26 @@ function formatNumber(value: number) {
 	return new Intl.NumberFormat("id-ID").format(value);
 }
 
-function formatShortDesaId(value: string) {
-	const last = value.split(".").at(-1) ?? value;
-	const trimmed = last.replace(/^0+/, "");
-	return trimmed || "0";
-}
-
-function provinsiNamaById(provinsiId: string) {
-	if (provinsiId === "33") return "Jawa Tengah";
-	return "Tidak diketahui";
-}
-
-function kabupatenNamaById(kabupatenId: string) {
-	if (kabupatenId === "13") return "Karanganyar";
-	return "Tidak diketahui";
-}
-
 function getWilayahView(row: IndustryRow) {
 	if (row.platform === "Google Maps") {
-		return row.metadata.wilayah;
+		return {
+			provinsi: `${row.metadata.wilayah.provinsi.id} - ${row.metadata.wilayah.provinsi.nama}`,
+			kabupaten: `${row.metadata.wilayah.kabupaten.id} - ${row.metadata.wilayah.kabupaten.nama}`,
+			kecamatan: `${row.metadata.wilayah.kecamatan.id} - ${row.metadata.wilayah.kecamatan.nama}`,
+			desa: `${row.metadata.wilayah.desa.id} - ${row.metadata.wilayah.desa.nama}`,
+		};
 	}
 
 	return {
-		provinsi: {
-			id: row.provinsiId,
-			nama: provinsiNamaById(row.provinsiId),
-		},
-		kabupaten: {
-			id: row.kabupatenId,
-			nama: kabupatenNamaById(row.kabupatenId),
-		},
-		kecamatan: {
-			id: row.kecamatanId,
-			nama: row.kecamatanNama,
-		},
-		desa: {
-			id: formatShortDesaId(row.desaId),
-			nama: row.desaNama,
-		},
+		provinsi: "-",
+		kabupaten: "-",
+		kecamatan: row.kecamatanNama,
+		desa: row.desaNama,
 	};
 }
 
-function baseColumns(): ColumnDef<IndustryRow>[] {
-	return [
+function baseColumns(includeWilayah: boolean): ColumnDef<IndustryRow>[] {
+	const columns: ColumnDef<IndustryRow>[] = [
 		{
 			accessorKey: "id",
 			header: "ID",
@@ -103,66 +80,74 @@ function baseColumns(): ColumnDef<IndustryRow>[] {
 				</span>
 			),
 		},
-		{
-			accessorFn: (row) => {
-				const wilayah = getWilayahView(row);
-				return `${wilayah.provinsi.id} - ${wilayah.provinsi.nama}`;
+	];
+
+	if (includeWilayah) {
+		columns.push(
+			{
+				accessorFn: (row) => {
+					const wilayah = getWilayahView(row);
+					return wilayah.provinsi;
+				},
+				id: "provinsi",
+				header: "Provinsi",
+				size: 280,
+				minSize: 210,
+				cell: (info) => (
+					<span className="leading-relaxed break-words whitespace-normal">
+						{String(info.getValue())}
+					</span>
+				),
 			},
-			id: "provinsi",
-			header: "Provinsi",
-			size: 280,
-			minSize: 210,
-			cell: (info) => (
-				<span className="leading-relaxed break-words whitespace-normal">
-					{String(info.getValue())}
-				</span>
-			),
-		},
-		{
-			accessorFn: (row) => {
-				const wilayah = getWilayahView(row);
-				return `${wilayah.kabupaten.id} - ${wilayah.kabupaten.nama}`;
+			{
+				accessorFn: (row) => {
+					const wilayah = getWilayahView(row);
+					return wilayah.kabupaten;
+				},
+				id: "kabupaten",
+				header: "Kabupaten",
+				size: 300,
+				minSize: 220,
+				cell: (info) => (
+					<span className="leading-relaxed break-words whitespace-normal">
+						{String(info.getValue())}
+					</span>
+				),
 			},
-			id: "kabupaten",
-			header: "Kabupaten",
-			size: 300,
-			minSize: 220,
-			cell: (info) => (
-				<span className="leading-relaxed break-words whitespace-normal">
-					{String(info.getValue())}
-				</span>
-			),
-		},
-		{
-			accessorFn: (row) => {
-				const wilayah = getWilayahView(row);
-				return `${wilayah.kecamatan.id} - ${wilayah.kecamatan.nama}`;
+			{
+				accessorFn: (row) => {
+					const wilayah = getWilayahView(row);
+					return wilayah.kecamatan;
+				},
+				id: "kecamatan",
+				header: "Kecamatan",
+				size: 300,
+				minSize: 220,
+				cell: (info) => (
+					<span className="leading-relaxed break-words whitespace-normal">
+						{String(info.getValue())}
+					</span>
+				),
 			},
-			id: "kecamatan",
-			header: "Kecamatan",
-			size: 300,
-			minSize: 220,
-			cell: (info) => (
-				<span className="leading-relaxed break-words whitespace-normal">
-					{String(info.getValue())}
-				</span>
-			),
-		},
-		{
-			accessorFn: (row) => {
-				const wilayah = getWilayahView(row);
-				return `${formatShortDesaId(wilayah.desa.id)} - ${wilayah.desa.nama}`;
+			{
+				accessorFn: (row) => {
+					const wilayah = getWilayahView(row);
+					return wilayah.desa;
+				},
+				id: "desa",
+				header: "Desa",
+				size: 300,
+				minSize: 220,
+				cell: (info) => (
+					<span className="leading-relaxed break-words whitespace-normal">
+						{String(info.getValue())}
+					</span>
+				),
 			},
-			id: "desa",
-			header: "Desa",
-			size: 300,
-			minSize: 220,
-			cell: (info) => (
-				<span className="leading-relaxed break-words whitespace-normal">
-					{String(info.getValue())}
-				</span>
-			),
-		},
+		);
+	}
+
+	columns.push(
 		{
 			accessorKey: "status",
 			header: "Status",
@@ -185,11 +170,13 @@ function baseColumns(): ColumnDef<IndustryRow>[] {
 			size: 230,
 			minSize: 200,
 		},
-	];
+	);
+
+	return columns;
 }
 
 const googleMapsColumns: ColumnDef<IndustryRow>[] = [
-	...baseColumns(),
+	...baseColumns(true),
 	{
 		accessorFn: (row) =>
 			row.platform === "Google Maps"
@@ -262,7 +249,7 @@ const googleMapsColumns: ColumnDef<IndustryRow>[] = [
 ];
 
 const youtubeColumns: ColumnDef<IndustryRow>[] = [
-	...baseColumns(),
+	...baseColumns(false),
 	{
 		accessorFn: (row) =>
 			row.platform === "YouTube"
@@ -345,7 +332,7 @@ const youtubeColumns: ColumnDef<IndustryRow>[] = [
 ];
 
 const tiktokColumns: ColumnDef<IndustryRow>[] = [
-	...baseColumns(),
+	...baseColumns(false),
 	{
 		accessorFn: (row) =>
 			row.platform === "TikTok"
@@ -469,9 +456,6 @@ export const DATA_INDUSTRI_TABS: DataIndustriTabConfig[] = [
 			return [
 				row.id,
 				row.namaUsaha,
-				row.provinsiId,
-				row.kabupatenId,
-				row.kecamatanNama,
 				row.metadata.channelTitle,
 				row.metadata.videoTitle,
 			]
@@ -489,9 +473,6 @@ export const DATA_INDUSTRI_TABS: DataIndustriTabConfig[] = [
 			return [
 				row.id,
 				row.namaUsaha,
-				row.provinsiId,
-				row.kabupatenId,
-				row.kecamatanNama,
 				row.metadata.authorUsername,
 				row.metadata.videoTitle,
 			]

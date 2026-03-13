@@ -28,8 +28,8 @@ npx prisma db seed
 
 ### Lokasi file sumber
 
-- Google Maps: `public/data/Google Maps/Desain Grafis.csv`
-- YouTube: `public/data/YouTube/YouTube Data.csv`
+- Google Maps: `public/data/Google Maps/Google Maps Data.csv`
+- YouTube: `public/data/YouTube/Youtube Data.csv`
 - TikTok: `public/data/TikTok/TikTok Data.csv` (opsional, jika ada)
 
 ### Pipeline

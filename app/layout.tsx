@@ -14,6 +14,11 @@ const inter = Inter({
 export const metadata: Metadata = {
 	title: "SANDIKA",
 	description: "Platform untuk data dan peta industri digital",
+	icons: {
+		icon: "/logo/bps.png",
+		shortcut: "/logo/bps.png",
+		apple: "/logo/bps.png",
+	},
 };
 
 export default function RootLayout({
