@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 
 import { prismaAdapter } from "@better-auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
 import { betterAuth } from "better-auth";
 import { username } from "better-auth/plugins/username";
 
 import { readIndustrySeedData } from "@/lib/industry";
+import { prisma } from "@/lib/prisma";
 
 type CsvUser = {
 	username: string;
@@ -15,8 +15,6 @@ type CsvUser = {
 	displayUsername?: string;
 	image?: string;
 };
-
-const prisma = new PrismaClient();
 
 const auth = betterAuth({
 	database: prismaAdapter(prisma, {

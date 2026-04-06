@@ -1,11 +1,13 @@
 import type { ColumnDef } from "@tanstack/react-table";
 
-import type {
-	GoogleMapsIndustryRow,
-	IndustryPlatform,
-	IndustryRow,
-	TikTokIndustryRow,
-	YouTubeIndustryRow,
+import {
+	formatKbliLabel,
+	normalizeKbliKategori,
+	type GoogleMapsIndustryRow,
+	type IndustryPlatform,
+	type IndustryRow,
+	type TikTokIndustryRow,
+	type YouTubeIndustryRow,
 } from "@/components/data-industri/types";
 
 export type DataIndustriTabKey = "google-maps" | "youtube" | "tiktok";
@@ -72,11 +74,13 @@ function baseColumns(includeWilayah: boolean): ColumnDef<IndustryRow>[] {
 			filterFn: (row, columnId, filterValue) => {
 				const selected = (filterValue ?? []) as string[];
 				if (!selected.length) return true;
-				return selected.includes(row.getValue(columnId));
+				return selected.includes(
+					normalizeKbliKategori(String(row.getValue(columnId) ?? "")),
+				);
 			},
 			cell: (info) => (
 				<span className="leading-relaxed break-words whitespace-normal">
-					{String(info.getValue())}
+					{formatKbliLabel(String(info.getValue()))}
 				</span>
 			),
 		},

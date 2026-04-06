@@ -3,7 +3,14 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowRight, Chrome, KeyRound, UserRound } from "lucide-react";
+import {
+	ArrowRight,
+	Chrome,
+	Eye,
+	EyeOff,
+	KeyRound,
+	UserRound,
+} from "lucide-react";
 
 import { useTimedAlert } from "@/contexts/TimedAlertContext";
 import { authClient } from "@/lib/auth-client";
@@ -14,6 +21,7 @@ export default function LoginPage() {
 	const { data: session, isPending } = authClient.useSession();
 	const [identifier, setIdentifier] = useState("");
 	const [password, setPassword] = useState("");
+	const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 	const [fieldErrors, setFieldErrors] = useState({
 		identifier: false,
 		password: false,
@@ -42,6 +50,10 @@ export default function LoginPage() {
 			router.replace("/");
 		}
 	}, [isPending, router, session]);
+
+	const togglePasswordVisibility = () => {
+		setIsPasswordVisible((prev) => !prev);
+	};
 
 	const handleLogin: React.FormEventHandler<HTMLFormElement> = async (e) => {
 		e.preventDefault();
@@ -86,6 +98,7 @@ export default function LoginPage() {
 
 	const handleGoogleLogin = async () => {
 		setFieldErrors({ identifier: false, password: false });
+		setIsPasswordVisible(false);
 		setIsGoogleSubmitting(true);
 		const { error: socialError } = await authClient.signIn.social({
 			provider: "google",
@@ -174,7 +187,11 @@ export default function LoginPage() {
 									>
 										<KeyRound className="h-4 w-4 shrink-0 opacity-40" />
 										<input
-											type="password"
+											type={
+												isPasswordVisible
+													? "text"
+													: "password"
+											}
 											className="grow text-sm"
 											placeholder="••••••••"
 											value={password}
@@ -188,6 +205,22 @@ export default function LoginPage() {
 												}
 											}}
 										/>
+										<button
+											type="button"
+											onClick={togglePasswordVisibility}
+											className="text-base-content/50 hover:text-base-content focus-visible:ring-primary/20 rounded-md p-1 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+											aria-label={
+												isPasswordVisible
+													? "Sembunyikan password"
+													: "Lihat password"
+											}
+										>
+											{isPasswordVisible ? (
+												<EyeOff className="h-4 w-4" />
+											) : (
+												<Eye className="h-4 w-4" />
+											)}
+										</button>
 									</label>
 								</label>
 							</div>

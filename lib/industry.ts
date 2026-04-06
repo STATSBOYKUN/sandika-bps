@@ -1,5 +1,7 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+
+import * as XLSX from "xlsx";
 
 import type {
 	GoogleMapsMetadata,
@@ -8,10 +10,13 @@ import type {
 	WilayahMetadata,
 	YouTubeMetadata,
 } from "@/components/data-industri/types";
+import { normalizeKbliKategori } from "@/components/data-industri/types";
 import karanganyarDesaGeoJson from "@/constant/geojson/karanganyar_desa.json";
 
-const DEFAULT_KBLI =
-	"AKTIVITAS PENERBITAN, PENYIARAN, SERTA PRODUKSI DAN DISTRIBUSI KONTEN";
+const DEFAULT_KBLI = "J";
+const GOOGLE_MERGE_NAME_PATTERN = /^merge\s+([a-z])/i;
+const GOOGLE_CATEGORY_DIR_PATTERN = /^kat\s+([a-z])$/i;
+const GOOGLE_MERGE_FILE_PATTERN = /^merge\s+[a-z]\.(xlsx|csv)$/i;
 
 const DEFAULT_LOCATION = {
 	provinsiId: "33",
@@ -420,6 +425,70 @@ function normalize(value: string) {
 		.trim();
 }
 
+function inferKategoriFromMergeName(fileName: string) {
+	const normalizedName = fileName.replace(/\s+/g, " ").trim();
+	const match = normalizedName.match(GOOGLE_MERGE_NAME_PATTERN);
+	if (!match) return null;
+
+	return normalizeKbliKategori(match[1].toUpperCase());
+}
+
+function inferKategoriFromCategoryDir(dirName: string) {
+	const match = dirName.trim().match(GOOGLE_CATEGORY_DIR_PATTERN);
+	if (!match) return null;
+
+	return normalizeKbliKategori(match[1].toUpperCase());
+}
+
+function inferKbliKategoriFromGoogleMapsPath(filePath: string) {
+	const fileName = path.basename(filePath);
+	const fromMergeName = inferKategoriFromMergeName(fileName);
+	if (fromMergeName && fromMergeName !== DEFAULT_KBLI) {
+		return fromMergeName;
+	}
+
+	const parentDir = path.basename(path.dirname(filePath));
+	const fromDirName = inferKategoriFromCategoryDir(parentDir);
+	if (fromDirName && fromDirName !== DEFAULT_KBLI) {
+		return fromDirName;
+	}
+
+	return DEFAULT_KBLI;
+}
+
+function classifyGoogleMapsMergeFile(filePath: string) {
+	const fileName = path.basename(filePath);
+	const ext = path.extname(fileName).toLowerCase();
+	if (ext !== ".csv" && ext !== ".xlsx") return null;
+	if (!GOOGLE_MERGE_FILE_PATTERN.test(fileName)) return null;
+
+	const category = inferKbliKategoriFromGoogleMapsPath(filePath);
+	if (category === DEFAULT_KBLI) return null;
+
+	const priority = ext === ".xlsx" ? 0 : 1;
+
+	return {
+		category,
+		priority,
+	};
+}
+
+export async function inferKbliKategoriFromGoogleMapsFilename(
+	fileName: string,
+) {
+	const fromMergeName = inferKategoriFromMergeName(fileName);
+	if (fromMergeName && fromMergeName !== DEFAULT_KBLI) {
+		return fromMergeName;
+	}
+
+	const fromDirName = inferKategoriFromCategoryDir(fileName);
+	if (fromDirName && fromDirName !== DEFAULT_KBLI) {
+		return fromDirName;
+	}
+
+	return DEFAULT_KBLI;
+}
+
 function toNumber(value: string, fallback = 0) {
 	const normalized = value.replace(/[^\d,.-]/g, "").replace(/,/g, "");
 	if (!normalized) return fallback;
@@ -485,17 +554,65 @@ function parseCsv(content: string): Record<string, string>[] {
 	});
 }
 
-function buildGoogleMapsSeeds(content: string): IndustrySeedInput[] {
-	const rows = parseCsv(content);
-	const output: IndustrySeedInput[] = [];
+function normalizeSourceHeader(value: string) {
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "_")
+		.replace(/^_+|_+$/g, "");
+}
 
-	rows.forEach((row, index) => {
+function normalizeSourceRowValues(row: Record<string, unknown>) {
+	const normalized: Record<string, string> = {};
+
+	for (const [key, rawValue] of Object.entries(row)) {
+		const normalizedKey = normalizeSourceHeader(key);
+		if (!normalizedKey) continue;
+
+		normalized[normalizedKey] = String(rawValue ?? "").trim();
+	}
+
+	return normalized;
+}
+
+function pickGoogleMapsField(
+	row: Record<string, string>,
+	candidates: string[],
+) {
+	for (const key of candidates) {
+		const value = row[key];
+		if (value && value.trim()) return value.trim();
+	}
+
+	return "";
+}
+
+function buildGoogleMapsSeedsFromRows(
+	sourceRows: Record<string, unknown>[],
+	options: {
+		fileName?: string;
+		kbliKategori?: string;
+	} = {},
+): IndustrySeedInput[] {
+	const output: IndustrySeedInput[] = [];
+	const kbliKategori =
+		normalizeKbliKategori(options.kbliKategori ?? DEFAULT_KBLI) ||
+		DEFAULT_KBLI;
+
+	sourceRows.forEach((rawRow, index) => {
+		const row = normalizeSourceRowValues(rawRow);
 		const latitude = toNumber(row.latitude);
 		const longitude = toNumber(row.longitude);
 		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
-		const namaUsaha = row.title || `Google Maps Row ${index + 1}`;
-		const sourceLink = row.link || `${namaUsaha}-${latitude}-${longitude}`;
+		const namaUsaha =
+			pickGoogleMapsField(row, ["title", "name"]) ||
+			`Google Maps Row ${index + 1}`;
+		const sourceLink =
+			pickGoogleMapsField(row, ["link", "maps_url", "url"]) ||
+			pickGoogleMapsField(row, ["place_id", "placeid"]) ||
+			pickGoogleMapsField(row, ["plus_code", "pluscode"]) ||
+			`${options.fileName ?? "google-maps"}-${latitude}-${longitude}-${index + 1}`;
 		const locationByCoordinate = inferLocationByCoordinate(
 			latitude,
 			longitude,
@@ -515,7 +632,7 @@ function buildGoogleMapsSeeds(content: string): IndustrySeedInput[] {
 			sourceKey: `gm:${sourceLink}`,
 			platform: "Google Maps" as const,
 			namaUsaha,
-			kbliKategori: DEFAULT_KBLI,
+			kbliKategori,
 			provinsiId: location.provinsiId,
 			kabupatenId: location.kabupatenId,
 			kecamatanId: location.kecamatanId,
@@ -528,12 +645,74 @@ function buildGoogleMapsSeeds(content: string): IndustrySeedInput[] {
 				wilayah,
 				latitude,
 				longitude,
-				placeId: row.plus_code || row.link || `gm_${index + 1}`,
+				category: pickGoogleMapsField(row, ["category"]),
+				address: pickGoogleMapsField(row, ["address"]),
+				openHours: pickGoogleMapsField(row, [
+					"open_hours",
+					"openhours",
+				]),
+				popularTimes: pickGoogleMapsField(row, [
+					"popular_times",
+					"populartimes",
+				]),
+				website: pickGoogleMapsField(row, ["website"]),
+				phone: pickGoogleMapsField(row, ["phone"]),
+				plusCode: pickGoogleMapsField(row, ["plus_code", "pluscode"]),
+				placeId:
+					pickGoogleMapsField(row, ["place_id", "placeid"]) ||
+					pickGoogleMapsField(row, ["plus_code", "pluscode"]) ||
+					pickGoogleMapsField(row, ["link", "maps_url", "url"]) ||
+					`gm_${index + 1}`,
+				cid: pickGoogleMapsField(row, ["cid"]),
 				mapsUrl:
-					row.link ||
+					pickGoogleMapsField(row, ["link", "maps_url", "url"]) ||
 					`https://maps.google.com/?q=${latitude},${longitude}`,
-				rating: toNumber(row.review_rating),
-				reviewCount: Math.trunc(toNumber(row.review_count)),
+				rating: toNumber(
+					pickGoogleMapsField(row, ["review_rating", "reviewrating"]),
+				),
+				reviewCount: Math.trunc(
+					toNumber(
+						pickGoogleMapsField(row, [
+							"review_count",
+							"reviewcount",
+						]),
+					),
+				),
+				sourceStatus: pickGoogleMapsField(row, ["status"]),
+				descriptions: pickGoogleMapsField(row, ["descriptions"]),
+				reviewsLink: pickGoogleMapsField(row, [
+					"reviews_link",
+					"reviewslink",
+				]),
+				thumbnail: pickGoogleMapsField(row, ["thumbnail"]),
+				timezone: pickGoogleMapsField(row, ["timezone"]),
+				priceRange: pickGoogleMapsField(row, [
+					"price_range",
+					"pricerange",
+				]),
+				dataId: pickGoogleMapsField(row, ["data_id", "dataid"]),
+				images: pickGoogleMapsField(row, ["images"]),
+				reservations: pickGoogleMapsField(row, ["reservations"]),
+				orderOnline: pickGoogleMapsField(row, [
+					"order_online",
+					"orderonline",
+				]),
+				menu: pickGoogleMapsField(row, ["menu"]),
+				owner: pickGoogleMapsField(row, ["owner"]),
+				completeAddress: pickGoogleMapsField(row, [
+					"complete_address",
+					"completeaddress",
+				]),
+				about: pickGoogleMapsField(row, ["about"]),
+				userReviews: pickGoogleMapsField(row, [
+					"user_reviews",
+					"userreviews",
+				]),
+				userReviewsExtended: pickGoogleMapsField(row, [
+					"user_reviews_extended",
+					"userreviewsextended",
+				]),
+				emails: pickGoogleMapsField(row, ["emails", "email"]),
 			} satisfies GoogleMapsMetadata,
 		});
 	});
@@ -702,23 +881,80 @@ async function readFirstExisting(filePaths: string[]) {
 	return null;
 }
 
+async function resolveGoogleMapsMergeSources(googleMergeDir: string) {
+	const files = (
+		await readdir(googleMergeDir, { withFileTypes: true }).catch(() => [])
+	)
+		.filter((entry) => entry.isFile())
+		.map((entry) => path.join(googleMergeDir, entry.name));
+	const selectedByCategory = new Map<
+		string,
+		{ filePath: string; priority: number }
+	>();
+
+	for (const filePath of files) {
+		const classified = classifyGoogleMapsMergeFile(filePath);
+		if (!classified) continue;
+
+		const existing = selectedByCategory.get(classified.category);
+		if (!existing || classified.priority < existing.priority) {
+			selectedByCategory.set(classified.category, {
+				filePath,
+				priority: classified.priority,
+			});
+		}
+	}
+
+	return Array.from(selectedByCategory.entries())
+		.map(([category, value]) => ({
+			category,
+			filePath: value.filePath,
+		}))
+		.sort((a, b) => a.category.localeCompare(b.category, "id-ID"));
+}
+
+async function readGoogleMapsSourceRows(filePath: string) {
+	const ext = path.extname(filePath).toLowerCase();
+
+	if (ext === ".csv") {
+		const content = await readIfExists(filePath);
+		if (!content) return [];
+		return parseCsv(content);
+	}
+
+	if (ext === ".xlsx") {
+		try {
+			const buffer = await readFile(filePath);
+			const workbook = XLSX.read(buffer, {
+				type: "buffer",
+				raw: false,
+			});
+			const firstSheetName = workbook.SheetNames[0];
+			if (!firstSheetName) return [];
+
+			return XLSX.utils.sheet_to_json<Record<string, unknown>>(
+				workbook.Sheets[firstSheetName],
+				{
+					defval: "",
+					raw: false,
+				},
+			);
+		} catch {
+			return [];
+		}
+	}
+
+	return [];
+}
+
 export async function readIndustrySeedData(baseDir = process.cwd()) {
-	const googlePaths = [
-		path.join(
-			baseDir,
-			"public",
-			"data",
-			"Google Maps",
-			"Google Maps Data.csv",
-		),
-		path.join(
-			baseDir,
-			"public",
-			"data",
-			"Google Maps",
-			"Desain Grafis.csv",
-		),
-	];
+	const googleMergeDir = path.join(
+		baseDir,
+		"public",
+		"data",
+		"Google Maps",
+		"Merge",
+	);
 	const youtubePaths = [
 		path.join(baseDir, "public", "data", "YouTube", "Youtube Data.csv"),
 		path.join(baseDir, "public", "data", "YouTube", "YouTube Data.csv"),
@@ -731,13 +967,30 @@ export async function readIndustrySeedData(baseDir = process.cwd()) {
 		"TikTok Data.csv",
 	);
 
-	const [googleFile, youtubeFile, tiktokFile] = await Promise.all([
-		readFirstExisting(googlePaths),
+	const [googleMergeSources, youtubeFile, tiktokFile] = await Promise.all([
+		resolveGoogleMapsMergeSources(googleMergeDir),
 		readFirstExisting(youtubePaths),
 		readIfExists(tiktokPath),
 	]);
 
-	const googleRows = googleFile ? buildGoogleMapsSeeds(googleFile) : [];
+	const googleRowsNested = await Promise.all(
+		googleMergeSources.map(async (source) => {
+			const rows = await readGoogleMapsSourceRows(source.filePath);
+			if (!rows.length) {
+				console.warn(
+					`Skipping empty Google Maps merge file: ${path.basename(source.filePath)}`,
+				);
+				return [];
+			}
+
+			return buildGoogleMapsSeedsFromRows(rows, {
+				fileName: path.basename(source.filePath),
+				kbliKategori: source.category,
+			});
+		}),
+	);
+
+	const googleRows = googleRowsNested.flat();
 	const youtubeRows = youtubeFile ? buildYoutubeSeeds(youtubeFile) : [];
 	const tiktokRows = tiktokFile ? buildTikTokSeeds(tiktokFile) : [];
 
@@ -808,7 +1061,7 @@ export function mapIndustryRecordToRow(
 	const base = {
 		id: record.id,
 		namaUsaha: record.namaUsaha,
-		kbliKategori: record.kbliKategori,
+		kbliKategori: normalizeKbliKategori(record.kbliKategori),
 		kecamatanNama: record.kecamatanNama ?? "",
 		desaNama: record.desaNama ?? "",
 		status: (record.status as IndustryRow["status"]) ?? "Verifikasi",
@@ -844,12 +1097,37 @@ export function mapIndustryRecordToRow(
 				wilayah,
 				latitude: toNumber(String(metadata.latitude ?? 0)),
 				longitude: toNumber(String(metadata.longitude ?? 0)),
+				category: String(metadata.category ?? ""),
+				address: String(metadata.address ?? ""),
+				openHours: String(metadata.openHours ?? ""),
+				popularTimes: String(metadata.popularTimes ?? ""),
+				website: String(metadata.website ?? ""),
+				phone: String(metadata.phone ?? ""),
+				plusCode: String(metadata.plusCode ?? ""),
 				placeId: String(metadata.placeId ?? ""),
+				cid: String(metadata.cid ?? ""),
 				mapsUrl: String(metadata.mapsUrl ?? ""),
 				rating: toNumber(String(metadata.rating ?? 0)),
 				reviewCount: Math.trunc(
 					toNumber(String(metadata.reviewCount ?? 0)),
 				),
+				sourceStatus: String(metadata.sourceStatus ?? ""),
+				descriptions: String(metadata.descriptions ?? ""),
+				reviewsLink: String(metadata.reviewsLink ?? ""),
+				thumbnail: String(metadata.thumbnail ?? ""),
+				timezone: String(metadata.timezone ?? ""),
+				priceRange: String(metadata.priceRange ?? ""),
+				dataId: String(metadata.dataId ?? ""),
+				images: String(metadata.images ?? ""),
+				reservations: String(metadata.reservations ?? ""),
+				orderOnline: String(metadata.orderOnline ?? ""),
+				menu: String(metadata.menu ?? ""),
+				owner: String(metadata.owner ?? ""),
+				completeAddress: String(metadata.completeAddress ?? ""),
+				about: String(metadata.about ?? ""),
+				userReviews: String(metadata.userReviews ?? ""),
+				userReviewsExtended: String(metadata.userReviewsExtended ?? ""),
+				emails: String(metadata.emails ?? ""),
 			},
 		};
 	}

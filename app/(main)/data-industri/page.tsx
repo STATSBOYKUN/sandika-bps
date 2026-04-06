@@ -28,12 +28,15 @@ import {
 	type DataIndustriTabKey,
 } from "@/components/data-industri/table-metadata";
 import {
+	getKaranganyarCoverageLabel,
 	KBLI_OPTIONS,
+	type KaranganyarCoverageFilter,
 	type IndustryRow,
 } from "@/components/data-industri/types";
 import PageHeader from "@/components/layout/PageHeader";
 import PageShell from "@/components/layout/PageShell";
 import PageState from "@/components/layout/PageState";
+import { useTimedAlert } from "@/contexts/TimedAlertContext";
 
 const ALL_KECAMATAN = "Semua";
 const ALL_DESA = "Semua";
@@ -71,6 +74,7 @@ function tabIcon(tabKey: DataIndustriTabKey) {
 }
 
 export default function DataIndustriPage() {
+	const { showAlert } = useTimedAlert();
 	const [activeTab, setActiveTab] =
 		useState<DataIndustriTabKey>("google-maps");
 	const [sorting, setSorting] = useState<SortingState>([]);
@@ -89,10 +93,15 @@ export default function DataIndustriPage() {
 	const [selectedKecamatan, setSelectedKecamatan] =
 		useState<string>(ALL_KECAMATAN);
 	const [selectedDesa, setSelectedDesa] = useState<string>(ALL_DESA);
+	const [selectedCoverage, setSelectedCoverage] =
+		useState<KaranganyarCoverageFilter>("inside");
 	const [tempKecamatan, setTempKecamatan] = useState<string>(ALL_KECAMATAN);
 	const [tempDesa, setTempDesa] = useState<string>(ALL_DESA);
+	const [tempCoverage, setTempCoverage] =
+		useState<KaranganyarCoverageFilter>("inside");
 	const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 	const [previewRow, setPreviewRow] = useState<IndustryRow | null>(null);
+	const [isImporting, setIsImporting] = useState(false);
 
 	const [rowsState, setRowsState] = useState<IndustryRow[]>([]);
 	const [isLoadingRows, setIsLoadingRows] = useState(true);
@@ -108,6 +117,13 @@ export default function DataIndustriPage() {
 			return matchesPlatform;
 		});
 	}, [rowsState, activeTabConfig]);
+	const coverageFilteredRows = useMemo(() => {
+		return platformRows.filter((row) => {
+			if (selectedCoverage === "inside") return row.isInsideKaranganyar;
+			if (selectedCoverage === "outside") return !row.isInsideKaranganyar;
+			return true;
+		});
+	}, [platformRows, selectedCoverage]);
 
 	const kecamatanOptions = useMemo(
 		() =>
@@ -115,31 +131,33 @@ export default function DataIndustriPage() {
 				? [
 						ALL_KECAMATAN,
 						...sortUnique(
-							platformRows.map((row) => row.kecamatanNama),
+							coverageFilteredRows.map(
+								(row) => row.kecamatanNama,
+							),
 						),
 					]
 				: [ALL_KECAMATAN],
-		[isGoogleMapsTab, platformRows],
+		[coverageFilteredRows, isGoogleMapsTab],
 	);
 	const desaOptions = useMemo(
 		() =>
 			isGoogleMapsTab
-				? buildDesaOptions(platformRows, selectedKecamatan)
+				? buildDesaOptions(coverageFilteredRows, selectedKecamatan)
 				: [ALL_DESA],
-		[isGoogleMapsTab, platformRows, selectedKecamatan],
+		[coverageFilteredRows, isGoogleMapsTab, selectedKecamatan],
 	);
 	const tempDesaOptions = useMemo(
 		() =>
 			isGoogleMapsTab
-				? buildDesaOptions(platformRows, tempKecamatan)
+				? buildDesaOptions(coverageFilteredRows, tempKecamatan)
 				: [ALL_DESA],
-		[isGoogleMapsTab, platformRows, tempKecamatan],
+		[coverageFilteredRows, isGoogleMapsTab, tempKecamatan],
 	);
 
 	const data = useMemo(() => {
-		if (!isGoogleMapsTab) return platformRows;
+		if (!isGoogleMapsTab) return coverageFilteredRows;
 
-		return platformRows.filter((row) => {
+		return coverageFilteredRows.filter((row) => {
 			const matchesKecamatan =
 				selectedKecamatan === ALL_KECAMATAN ||
 				row.kecamatanNama === selectedKecamatan;
@@ -147,7 +165,12 @@ export default function DataIndustriPage() {
 				selectedDesa === ALL_DESA || row.desaNama === selectedDesa;
 			return matchesKecamatan && matchesDesa;
 		});
-	}, [isGoogleMapsTab, platformRows, selectedKecamatan, selectedDesa]);
+	}, [
+		coverageFilteredRows,
+		isGoogleMapsTab,
+		selectedDesa,
+		selectedKecamatan,
+	]);
 
 	const columns = useMemo(() => activeTabConfig.columns, [activeTabConfig]);
 
@@ -249,6 +272,7 @@ export default function DataIndustriPage() {
 	}, [
 		activeTab,
 		globalFilter,
+		selectedCoverage,
 		selectedDesa,
 		selectedKbli,
 		selectedKecamatan,
@@ -260,6 +284,7 @@ export default function DataIndustriPage() {
 		setTempKbli([...selectedKbli]);
 		setTempKecamatan(selectedKecamatan);
 		setTempDesa(selectedDesa);
+		setTempCoverage(selectedCoverage);
 		setIsFilterModalOpen(true);
 	};
 
@@ -267,6 +292,7 @@ export default function DataIndustriPage() {
 		setSelectedKbli([...tempKbli]);
 		setSelectedKecamatan(tempKecamatan);
 		setSelectedDesa(tempDesa);
+		setSelectedCoverage(tempCoverage);
 		setIsFilterModalOpen(false);
 	};
 
@@ -294,10 +320,64 @@ export default function DataIndustriPage() {
 		setSelectedKbli([...KBLI_OPTIONS]);
 		setSelectedKecamatan(ALL_KECAMATAN);
 		setSelectedDesa(ALL_DESA);
+		setSelectedCoverage("inside");
 		setTempKbli([...KBLI_OPTIONS]);
 		setTempKecamatan(ALL_KECAMATAN);
 		setTempDesa(ALL_DESA);
+		setTempCoverage("inside");
 	};
+
+	const handleImportFile = useCallback(
+		async (file: File) => {
+			setIsImporting(true);
+			try {
+				const formData = new FormData();
+				formData.append("file", file);
+
+				const response = await fetch("/api/industry", {
+					method: "POST",
+					body: formData,
+				});
+
+				const payload = (await response.json()) as {
+					message?: string;
+					imported?: number;
+					skipped?: number;
+					errors?: string[];
+				};
+
+				if (!response.ok) {
+					showAlert({
+						variant: "error",
+						title: "Import gagal",
+						description:
+							payload.message ??
+							"File tidak dapat diproses. Periksa format CSV/XLSX.",
+					});
+					return;
+				}
+
+				showAlert({
+					variant: payload.errors?.length ? "warning" : "success",
+					title: "Import selesai",
+					description: `Berhasil impor ${payload.imported ?? 0} baris, dilewati ${payload.skipped ?? 0} baris.${payload.errors?.length ? ` ${payload.errors[0]}` : ""}`,
+					durationMs: payload.errors?.length ? 7000 : 4500,
+				});
+
+				await loadRows();
+			} catch {
+				showAlert({
+					variant: "error",
+					title: "Import gagal",
+					description:
+						"Terjadi kendala saat mengunggah file. Silakan coba lagi.",
+				});
+			} finally {
+				setIsImporting(false);
+			}
+		},
+		[loadRows, showAlert],
+	);
 
 	return (
 		<PageShell width="4xl" className="space-y-6">
@@ -337,11 +417,14 @@ export default function DataIndustriPage() {
 				totalKbliOptions={KBLI_OPTIONS.length}
 				anomalyCount={anomalyCount}
 				searchInput={searchInput}
+				selectedCoverage={getKaranganyarCoverageLabel(selectedCoverage)}
 				selectedKecamatan={selectedKecamatan}
 				selectedDesa={selectedDesa}
 				showRegionFilters={isGoogleMapsTab}
 				onSearchChange={setSearchInput}
 				onOpenFilter={openFilterModal}
+				onImportFile={handleImportFile}
+				isImporting={isImporting}
 			/>
 
 			{isLoadingRows ? (
@@ -429,6 +512,7 @@ export default function DataIndustriPage() {
 				isOpen={isFilterModalOpen}
 				kbliOptions={KBLI_OPTIONS}
 				selectedKbli={tempKbli}
+				selectedCoverage={tempCoverage}
 				kecamatanOptions={kecamatanOptions}
 				desaOptions={tempDesaOptions}
 				selectedKecamatan={tempKecamatan}
@@ -436,6 +520,7 @@ export default function DataIndustriPage() {
 				showRegionFilters={isGoogleMapsTab}
 				totalShown={filteredCount}
 				onToggleKbli={toggleKbli}
+				onChangeCoverage={setTempCoverage}
 				onChangeKecamatan={(value) => {
 					setTempKecamatan(value);
 					setTempDesa(ALL_DESA);
@@ -443,16 +528,19 @@ export default function DataIndustriPage() {
 				onChangeDesa={setTempDesa}
 				onSelectAll={() => {
 					setTempKbli([...KBLI_OPTIONS]);
+					setTempCoverage("all");
 					setTempKecamatan(ALL_KECAMATAN);
 					setTempDesa(ALL_DESA);
 				}}
 				onClearAll={() => {
 					setTempKbli([]);
+					setTempCoverage("all");
 					setTempKecamatan(ALL_KECAMATAN);
 					setTempDesa(ALL_DESA);
 				}}
 				onReset={() => {
 					setTempKbli([...KBLI_OPTIONS]);
+					setTempCoverage("inside");
 					setTempKecamatan(ALL_KECAMATAN);
 					setTempDesa(ALL_DESA);
 				}}

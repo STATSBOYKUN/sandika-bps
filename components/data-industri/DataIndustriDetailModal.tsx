@@ -47,6 +47,30 @@ function cleanString(value: string) {
 	return value.trim();
 }
 
+function formatStructuredValue(value: string) {
+	const trimmed = cleanString(value);
+	if (!trimmed) return "";
+
+	try {
+		return JSON.stringify(JSON.parse(trimmed), null, 2);
+	} catch {
+		return trimmed;
+	}
+}
+
+function previewStructuredValue(value: string) {
+	const formatted = formatStructuredValue(value);
+	if (!formatted) return "";
+
+	const [firstLine = "", ...restLines] = formatted.split("\n");
+	const shortened =
+		firstLine.length > 96 ? `${firstLine.slice(0, 93)}...` : firstLine;
+
+	return restLines.length > 0
+		? `${shortened} (+${restLines.length} baris)`
+		: shortened;
+}
+
 function isValidCoordinate(latitude: number, longitude: number) {
 	return (
 		Number.isFinite(latitude) &&
@@ -104,10 +128,23 @@ function metadataFields(row: IndustryRow): Array<[string, string]> {
 			...wilayahFields,
 			["Latitude", row.metadata.latitude.toFixed(6)],
 			["Longitude", row.metadata.longitude.toFixed(6)],
+			["Kategori Google Maps", row.metadata.category],
+			["Alamat", row.metadata.address],
+			["Website", row.metadata.website],
+			["Telepon", row.metadata.phone],
+			["Plus Code", row.metadata.plusCode],
 			["Place ID", row.metadata.placeId],
+			["CID", row.metadata.cid],
 			["Maps URL", row.metadata.mapsUrl],
 			["Rating", row.metadata.rating.toFixed(1)],
 			["Review Count", String(row.metadata.reviewCount)],
+			["Status Sumber", row.metadata.sourceStatus],
+			["Deskripsi", row.metadata.descriptions],
+			["Reviews Link", row.metadata.reviewsLink],
+			["Thumbnail", row.metadata.thumbnail],
+			["Timezone", row.metadata.timezone],
+			["Price Range", row.metadata.priceRange],
+			["Data ID", row.metadata.dataId],
 		];
 	}
 
@@ -139,6 +176,27 @@ function metadataFields(row: IndustryRow): Array<[string, string]> {
 		["Share", String(row.metadata.shareCount)],
 		["Follower", String(row.metadata.followerCount)],
 	];
+}
+
+function googleMapsCollapsedFields(row: IndustryRow): Array<[string, string]> {
+	if (row.platform !== "Google Maps") return [];
+
+	const fields: Array<[string, string]> = [
+		["Open Hours", row.metadata.openHours],
+		["Popular Times", row.metadata.popularTimes],
+		["Images", row.metadata.images],
+		["Reservations", row.metadata.reservations],
+		["Order Online", row.metadata.orderOnline],
+		["Menu", row.metadata.menu],
+		["Owner", row.metadata.owner],
+		["Complete Address", row.metadata.completeAddress],
+		["About", row.metadata.about],
+		["User Reviews", row.metadata.userReviews],
+		["User Reviews Extended", row.metadata.userReviewsExtended],
+		["Emails", row.metadata.emails],
+	];
+
+	return fields.filter(([, value]) => cleanString(value).length > 0);
 }
 
 export default function DataIndustriDetailModal({
@@ -195,6 +253,7 @@ function DataIndustriDetailModalContent({
 	const isYouTube = draft.platform === "YouTube";
 	const googleDraft = draft.platform === "Google Maps" ? draft : null;
 	const youtubeDraft = draft.platform === "YouTube" ? draft : null;
+	const googleCollapsedMetadata = googleMapsCollapsedFields(draft);
 	const hasYouTubeChannelPreview =
 		isYouTube && isValidYouTubeChannelId(draft.metadata.channelId);
 	const youtubePreviewUrl = hasYouTubeChannelPreview
@@ -683,6 +742,42 @@ function DataIndustriDetailModalContent({
 							))}
 						</div>
 					</div>
+
+					{googleCollapsedMetadata.length > 0 ? (
+						<div className="border-base-300 bg-base-100 rounded-xl border px-3 py-3">
+							<div className="text-base-content/60 mb-3 text-xs font-semibold tracking-wide uppercase">
+								Metadata Tambahan
+							</div>
+							<div className="space-y-2">
+								{googleCollapsedMetadata.map(
+									([label, value]) => (
+										<details
+											key={label}
+											className="border-base-300 bg-base-200/30 rounded-lg border"
+										>
+											<summary className="cursor-pointer list-none px-3 py-2 text-sm font-medium">
+												<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+													<span>{label}</span>
+													<span className="text-base-content/60 text-xs sm:max-w-[60%] sm:text-right">
+														{previewStructuredValue(
+															value,
+														)}
+													</span>
+												</div>
+											</summary>
+											<div className="border-base-300 border-t px-3 py-3">
+												<pre className="bg-base-200/60 max-h-72 overflow-auto rounded-lg p-3 text-xs leading-relaxed break-words whitespace-pre-wrap">
+													{formatStructuredValue(
+														value,
+													)}
+												</pre>
+											</div>
+										</details>
+									),
+								)}
+							</div>
+						</div>
+					) : null}
 
 					<div className="border-base-300 bg-base-100 rounded-xl border px-3 py-3">
 						<div className="mb-3 flex items-center justify-between gap-2">

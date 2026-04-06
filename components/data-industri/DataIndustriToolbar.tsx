@@ -2,6 +2,8 @@ import {
 	AlertTriangle,
 	Building2,
 	Landmark,
+	MapPinned,
+	Upload,
 	Search,
 	Settings2,
 } from "lucide-react";
@@ -9,6 +11,7 @@ import {
 interface DataIndustriToolbarProps {
 	selectedKbli: string[];
 	totalKbliOptions: number;
+	selectedCoverage: string;
 	selectedKecamatan: string;
 	selectedDesa: string;
 	showRegionFilters: boolean;
@@ -16,11 +19,14 @@ interface DataIndustriToolbarProps {
 	searchInput: string;
 	onSearchChange: (value: string) => void;
 	onOpenFilter: () => void;
+	onImportFile: (file: File) => void | Promise<void>;
+	isImporting: boolean;
 }
 
 export default function DataIndustriToolbar({
 	selectedKbli,
 	totalKbliOptions,
+	selectedCoverage,
 	selectedKecamatan,
 	selectedDesa,
 	showRegionFilters,
@@ -28,6 +34,8 @@ export default function DataIndustriToolbar({
 	searchInput,
 	onSearchChange,
 	onOpenFilter,
+	onImportFile,
+	isImporting,
 }: DataIndustriToolbarProps) {
 	const kbliLabel =
 		selectedKbli.length === totalKbliOptions
@@ -47,6 +55,10 @@ export default function DataIndustriToolbar({
 					</span>
 
 					<span className="badge badge-primary">{kbliLabel}</span>
+					<span className="badge badge-accent gap-1.5">
+						<MapPinned className="h-3.5 w-3.5" />
+						{selectedCoverage}
+					</span>
 					{showRegionFilters ? (
 						<>
 							<span className="badge badge-info gap-1.5">
@@ -81,6 +93,31 @@ export default function DataIndustriToolbar({
 							placeholder={searchPlaceholder}
 						/>
 					</label>
+					<button
+						type="button"
+						className="btn btn-sm btn-outline w-full gap-2 sm:w-auto"
+						onClick={() => {
+							const input = document.getElementById(
+								"industry-import-input",
+							) as HTMLInputElement | null;
+							input?.click();
+						}}
+						disabled={isImporting}
+					>
+						<Upload className="h-4 w-4" />
+						{isImporting ? "Mengimpor..." : "Import CSV/XLSX"}
+					</button>
+					<input
+						id="industry-import-input"
+						type="file"
+						accept=".csv,.xlsx"
+						className="hidden"
+						onChange={(event) => {
+							const file = event.target.files?.[0];
+							if (file) void onImportFile(file);
+							event.currentTarget.value = "";
+						}}
+					/>
 					<button
 						type="button"
 						className="btn btn-sm btn-primary w-full gap-2 sm:w-auto"

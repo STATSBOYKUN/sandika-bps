@@ -3,15 +3,24 @@ import {
 	Check,
 	Filter,
 	Landmark,
+	Map,
 	MapPinned,
 	RefreshCw,
 	X,
 } from "lucide-react";
 
+import {
+	formatKbliLabel,
+	KARANGANYAR_COVERAGE_OPTIONS,
+	getKaranganyarCoverageLabel,
+	type KaranganyarCoverageFilter,
+} from "@/components/data-industri/types";
+
 interface DataIndustriFilterModalProps {
 	isOpen: boolean;
 	kbliOptions: readonly string[];
 	selectedKbli: string[];
+	selectedCoverage: KaranganyarCoverageFilter;
 	kecamatanOptions: string[];
 	desaOptions: string[];
 	selectedKecamatan: string;
@@ -19,6 +28,7 @@ interface DataIndustriFilterModalProps {
 	showRegionFilters: boolean;
 	totalShown: number;
 	onToggleKbli: (value: string) => void;
+	onChangeCoverage: (value: KaranganyarCoverageFilter) => void;
 	onChangeKecamatan: (value: string) => void;
 	onChangeDesa: (value: string) => void;
 	onSelectAll: () => void;
@@ -32,6 +42,7 @@ export default function DataIndustriFilterModal({
 	isOpen,
 	kbliOptions,
 	selectedKbli,
+	selectedCoverage,
 	kecamatanOptions,
 	desaOptions,
 	selectedKecamatan,
@@ -39,6 +50,7 @@ export default function DataIndustriFilterModal({
 	showRegionFilters,
 	totalShown,
 	onToggleKbli,
+	onChangeCoverage,
 	onChangeKecamatan,
 	onChangeDesa,
 	onSelectAll,
@@ -63,8 +75,9 @@ export default function DataIndustriFilterModal({
 									Filter Data Industri
 								</h3>
 								<p className="text-base-content/65 mt-1 text-xs">
-									Atur wilayah administratif dan kategori KBLI
-									untuk memfokuskan tabel data.
+									Atur cakupan wilayah, wilayah administratif,
+									dan kategori KBLI untuk memfokuskan tabel
+									data.
 								</p>
 							</div>
 						</div>
@@ -80,6 +93,10 @@ export default function DataIndustriFilterModal({
 					<div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
 						<span className="badge badge-primary">
 							KBLI: {selectedKbli.length}
+						</span>
+						<span className="badge badge-accent gap-1.5">
+							<Map className="h-3.5 w-3.5" />
+							{getKaranganyarCoverageLabel(selectedCoverage)}
 						</span>
 						{showRegionFilters ? (
 							<>
@@ -102,69 +119,116 @@ export default function DataIndustriFilterModal({
 
 				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:py-5">
 					<div
-						className={`grid grid-cols-1 gap-3 sm:gap-4 ${showRegionFilters ? "lg:grid-cols-[1.05fr_1fr]" : ""}`}
+						className={`grid grid-cols-1 gap-3 sm:gap-4 ${showRegionFilters ? "lg:grid-cols-[1.05fr_1fr]" : "lg:grid-cols-[0.95fr_1fr]"}`}
 					>
-						{showRegionFilters ? (
-							<div className="border-base-300 bg-base-100 space-y-4 rounded-2xl border p-3 sm:p-4">
-								<div>
-									<h4 className="text-sm font-semibold">
-										Wilayah Administratif
-									</h4>
-									<p className="text-base-content/60 mt-1 text-xs">
-										Pilih kecamatan dan desa untuk
-										mempersempit cakupan data industri.
-									</p>
-								</div>
-
-								<div className="grid grid-cols-1 gap-3">
-									<label className="form-control">
-										<span className="label-text text-base-content/70 mb-1 text-xs">
-											Filter Kecamatan
-										</span>
-										<select
-											className="select select-bordered select-sm w-full"
-											value={selectedKecamatan}
-											onChange={(event) =>
-												onChangeKecamatan(
-													event.target.value,
-												)
-											}
-										>
-											{kecamatanOptions.map((option) => (
-												<option
-													key={option}
-													value={option}
-												>
-													{option}
-												</option>
-											))}
-										</select>
-									</label>
-
-									<label className="form-control">
-										<span className="label-text text-base-content/70 mb-1 text-xs">
-											Filter Desa
-										</span>
-										<select
-											className="select select-bordered select-sm w-full"
-											value={selectedDesa}
-											onChange={(event) =>
-												onChangeDesa(event.target.value)
-											}
-										>
-											{desaOptions.map((option) => (
-												<option
-													key={option}
-													value={option}
-												>
-													{option}
-												</option>
-											))}
-										</select>
-									</label>
-								</div>
+						<div className="border-base-300 bg-base-100 space-y-4 rounded-2xl border p-3 sm:p-4">
+							<div>
+								<h4 className="text-sm font-semibold">
+									Cakupan Wilayah
+								</h4>
+								<p className="text-base-content/60 mt-1 text-xs">
+									Tentukan apakah tabel menampilkan data
+									dalam, luar, atau semua wilayah Karanganyar.
+								</p>
 							</div>
-						) : null}
+
+							<div className="space-y-2.5">
+								{KARANGANYAR_COVERAGE_OPTIONS.map((option) => {
+									const selected =
+										selectedCoverage === option.value;
+									return (
+										<button
+											key={option.value}
+											type="button"
+											className={`btn h-auto w-full justify-start px-3 py-3 text-left transition-all sm:px-4 sm:py-4 ${selected ? "btn-accent text-accent-content" : "btn-outline"}`}
+											onClick={() =>
+												onChangeCoverage(option.value)
+											}
+										>
+											<div className="flex w-full items-start justify-between gap-3">
+												<div>
+													<div className="text-sm font-medium">
+														{option.label}
+													</div>
+													<p className="mt-1 text-xs leading-relaxed whitespace-normal opacity-80">
+														{option.description}
+													</p>
+												</div>
+												{selected ? (
+													<Check className="mt-0.5 h-4 w-4 shrink-0" />
+												) : null}
+											</div>
+										</button>
+									);
+								})}
+							</div>
+
+							{showRegionFilters ? (
+								<>
+									<div className="border-base-200 border-t pt-4">
+										<h4 className="text-sm font-semibold">
+											Wilayah Administratif
+										</h4>
+										<p className="text-base-content/60 mt-1 text-xs">
+											Pilih kecamatan dan desa untuk
+											mempersempit cakupan data industri.
+										</p>
+									</div>
+
+									<div className="grid grid-cols-1 gap-3">
+										<label className="form-control">
+											<span className="label-text text-base-content/70 mb-1 text-xs">
+												Filter Kecamatan
+											</span>
+											<select
+												className="select select-bordered select-sm w-full"
+												value={selectedKecamatan}
+												onChange={(event) =>
+													onChangeKecamatan(
+														event.target.value,
+													)
+												}
+											>
+												{kecamatanOptions.map(
+													(option) => (
+														<option
+															key={option}
+															value={option}
+														>
+															{option}
+														</option>
+													),
+												)}
+											</select>
+										</label>
+
+										<label className="form-control">
+											<span className="label-text text-base-content/70 mb-1 text-xs">
+												Filter Desa
+											</span>
+											<select
+												className="select select-bordered select-sm w-full"
+												value={selectedDesa}
+												onChange={(event) =>
+													onChangeDesa(
+														event.target.value,
+													)
+												}
+											>
+												{desaOptions.map((option) => (
+													<option
+														key={option}
+														value={option}
+													>
+														{option}
+													</option>
+												))}
+											</select>
+										</label>
+									</div>
+								</>
+							) : null}
+						</div>
 
 						<div className="border-base-300 bg-base-100 rounded-2xl border p-3 sm:p-4">
 							<div className="mb-3 flex items-center justify-between gap-2">
@@ -195,7 +259,7 @@ export default function DataIndustriFilterModal({
 										>
 											<div className="flex w-full items-start justify-between gap-3">
 												<span className="text-xs leading-relaxed whitespace-normal sm:text-sm">
-													{option}
+													{formatKbliLabel(option)}
 												</span>
 												{selected ? (
 													<Check className="mt-0.5 h-4 w-4 shrink-0" />

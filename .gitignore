@@ -45,3 +45,11 @@ next-env.d.ts
 skills-lock.json
 
 .vscode/
+
+# data files
+public/data/**
+!public/data/
+!public/data/Google Maps/
+!public/data/Google Maps/Merge/
+!public/data/Google Maps/Merge/*.xlsx
+!public/data/Google Maps/Merge/*.csv
