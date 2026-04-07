@@ -34,6 +34,12 @@ type ImportRecord = {
 	metadata: Record<string, unknown>;
 };
 
+type ImportOptions = {
+	googleMapsDefaultKbli?: string;
+	defaultKbli?: string;
+	forceStatus?: ImportRecord["status"];
+};
+
 function normalizeHeader(value: string) {
 	return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
@@ -158,9 +164,7 @@ function normalizeSpreadsheetRows(rows: Array<Record<string, unknown>>) {
 function buildImportRecord(
 	row: NormalizedRow,
 	index: number,
-	options: {
-		googleMapsDefaultKbli?: string;
-	} = {},
+	options: ImportOptions = {},
 ): ImportRecord | null {
 	const platform = parsePlatform(row);
 	if (!platform) return null;
@@ -170,11 +174,14 @@ function buildImportRecord(
 		`Baris ${index + 1}`;
 	const sourceKey = buildSourceKey(platform, row, index);
 	const fallbackKbli =
-		platform === "Google Maps" ? options.googleMapsDefaultKbli || "J" : "J";
+		options.defaultKbli ||
+		(platform === "Google Maps"
+			? options.googleMapsDefaultKbli || "J"
+			: "J");
 	const kbliKategori = normalizeKbliKategori(
 		pick(row, ["kblikategori", "kbli", "kbli_kategori"]) || fallbackKbli,
 	);
-	const status = parseStatus(pick(row, ["status"]));
+	const status = options.forceStatus ?? parseStatus(pick(row, ["status"]));
 
 	const kecamatanNama =
 		pick(row, ["kecamatannama", "kecamatan", "wilayahkecamatannama"]) ||
@@ -463,6 +470,23 @@ export async function POST(request: Request) {
 	const googleMapsDefaultKbli = await inferKbliKategoriFromGoogleMapsFilename(
 		file.name,
 	);
+	const defaultKbli = normalizeKbliKategori(
+		String(formData.get("defaultKbli") ?? ""),
+	);
+	const forceStatusInput = String(formData.get("forceStatus") ?? "").trim();
+	const forceStatus: ImportRecord["status"] | undefined =
+		forceStatusInput === "Aktif" ||
+		forceStatusInput === "Verifikasi" ||
+		forceStatusInput === "Draft"
+			? forceStatusInput
+			: undefined;
+	const maxRowsInput = Number.parseInt(
+		String(formData.get("maxRows") ?? ""),
+		10,
+	);
+	const effectiveMaxRows = Number.isFinite(maxRowsInput)
+		? Math.max(1, Math.min(maxRowsInput, MAX_IMPORT_ROWS))
+		: MAX_IMPORT_ROWS;
 	const bytes = await file.arrayBuffer();
 	const workbook = XLSX.read(bytes, { type: "array", raw: false });
 
@@ -481,7 +505,7 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const rowsToImport = allRows.slice(0, MAX_IMPORT_ROWS);
+	const rowsToImport = allRows.slice(0, effectiveMaxRows);
 	const industryClient = (
 		prisma as unknown as {
 			industryRecord: {
@@ -502,6 +526,8 @@ export async function POST(request: Request) {
 		const row = rowsToImport[index];
 		const parsed = buildImportRecord(row, index, {
 			googleMapsDefaultKbli,
+			defaultKbli: defaultKbli || undefined,
+			forceStatus,
 		});
 
 		if (!parsed) {
@@ -545,7 +571,8 @@ export async function POST(request: Request) {
 		imported,
 		skipped,
 		errors,
-		truncated: allRows.length > MAX_IMPORT_ROWS,
+		truncated: allRows.length > effectiveMaxRows,
+		effectiveMaxRows,
 		totalRead: allRows.length,
 	});
 }

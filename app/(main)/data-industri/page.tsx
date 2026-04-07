@@ -36,7 +36,6 @@ import {
 import PageHeader from "@/components/layout/PageHeader";
 import PageShell from "@/components/layout/PageShell";
 import PageState from "@/components/layout/PageState";
-import { useTimedAlert } from "@/contexts/TimedAlertContext";
 
 const ALL_KECAMATAN = "Semua";
 const ALL_DESA = "Semua";
@@ -74,7 +73,6 @@ function tabIcon(tabKey: DataIndustriTabKey) {
 }
 
 export default function DataIndustriPage() {
-	const { showAlert } = useTimedAlert();
 	const [activeTab, setActiveTab] =
 		useState<DataIndustriTabKey>("google-maps");
 	const [sorting, setSorting] = useState<SortingState>([]);
@@ -101,7 +99,6 @@ export default function DataIndustriPage() {
 		useState<KaranganyarCoverageFilter>("inside");
 	const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 	const [previewRow, setPreviewRow] = useState<IndustryRow | null>(null);
-	const [isImporting, setIsImporting] = useState(false);
 
 	const [rowsState, setRowsState] = useState<IndustryRow[]>([]);
 	const [isLoadingRows, setIsLoadingRows] = useState(true);
@@ -327,58 +324,6 @@ export default function DataIndustriPage() {
 		setTempCoverage("inside");
 	};
 
-	const handleImportFile = useCallback(
-		async (file: File) => {
-			setIsImporting(true);
-			try {
-				const formData = new FormData();
-				formData.append("file", file);
-
-				const response = await fetch("/api/industry", {
-					method: "POST",
-					body: formData,
-				});
-
-				const payload = (await response.json()) as {
-					message?: string;
-					imported?: number;
-					skipped?: number;
-					errors?: string[];
-				};
-
-				if (!response.ok) {
-					showAlert({
-						variant: "error",
-						title: "Import gagal",
-						description:
-							payload.message ??
-							"File tidak dapat diproses. Periksa format CSV/XLSX.",
-					});
-					return;
-				}
-
-				showAlert({
-					variant: payload.errors?.length ? "warning" : "success",
-					title: "Import selesai",
-					description: `Berhasil impor ${payload.imported ?? 0} baris, dilewati ${payload.skipped ?? 0} baris.${payload.errors?.length ? ` ${payload.errors[0]}` : ""}`,
-					durationMs: payload.errors?.length ? 7000 : 4500,
-				});
-
-				await loadRows();
-			} catch {
-				showAlert({
-					variant: "error",
-					title: "Import gagal",
-					description:
-						"Terjadi kendala saat mengunggah file. Silakan coba lagi.",
-				});
-			} finally {
-				setIsImporting(false);
-			}
-		},
-		[loadRows, showAlert],
-	);
-
 	return (
 		<PageShell width="4xl" className="space-y-6">
 			<PageHeader
@@ -423,8 +368,6 @@ export default function DataIndustriPage() {
 				showRegionFilters={isGoogleMapsTab}
 				onSearchChange={setSearchInput}
 				onOpenFilter={openFilterModal}
-				onImportFile={handleImportFile}
-				isImporting={isImporting}
 			/>
 
 			{isLoadingRows ? (

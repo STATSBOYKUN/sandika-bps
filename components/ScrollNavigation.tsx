@@ -23,7 +23,7 @@ export default function ScrollNavigation({ children }: ScrollNavigationProps) {
 	const sectionHeaders: Record<number, string> = {
 		0: "Utama",
 		2: "Modul",
-		4: "Bantuan",
+		5: "Bantuan",
 	};
 
 	const isItemActive = (href?: string) => {
